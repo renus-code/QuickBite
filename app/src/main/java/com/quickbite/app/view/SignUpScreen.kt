@@ -72,13 +72,15 @@ fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
                     } else if (password.length < 6) {
                         errorMessage = "Password must be at least 6 characters"
                     } else {
-                        val success = userVM.signup(email, password, displayName)
-                        if (success) {
-                            navController.navigate("signin") {
-                                popUpTo(0) { inclusive = true }
+                        scope.launch {
+                            val success = userVM.signup(email, password, displayName)
+                            if (success) {
+                                navController.navigate("signin") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                errorMessage = "User already exists"
                             }
-                        } else {
-                            errorMessage = "User already exists"
                         }
                     }
                 },

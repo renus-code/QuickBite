@@ -60,13 +60,15 @@ fun SignInScreen(navController: NavController, userVM: UserViewModel) {
                     } else if (password.length < 6) {
                         errorMessage = "Password must be at least 6 characters"
                     } else {
-                        val success = userVM.login(email, password)
-                        if (success) {
-                            navController.navigate("home") {
-                                popUpTo(0) { inclusive = true }
+                        scope.launch {
+                            val success = userVM.login(email, password)
+                            if (success) {
+                                navController.navigate("home") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            } else {
+                                errorMessage = "Invalid email or password"
                             }
-                        } else {
-                            errorMessage = "Invalid email or password"
                         }
                     }
                 },

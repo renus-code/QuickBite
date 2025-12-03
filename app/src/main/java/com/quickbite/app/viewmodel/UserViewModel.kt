@@ -42,29 +42,25 @@ class UserViewModel(private val repository: UserRepository) : ViewModel() {
         // You can save this to Room or DataStore if you want it to persist
     }
 
-    fun signup(email: String, password: String, displayName: String): Boolean {
-        viewModelScope.launch {
-            val existingUser = repository.getUserByEmail(email)
-            if (existingUser == null) {
-                val newUser = User(email, password, displayName)
-                repository.insertUser(newUser)
-                loadUsers() // Refresh the user list
-            }
+    suspend fun signup(email: String, password: String, displayName: String): Boolean {
+        val existingUser = repository.getUserByEmail(email)
+        if (existingUser == null) {
+            val newUser = User(email, password, displayName)
+            repository.insertUser(newUser)
+            loadUsers() // Refresh the user list
+            return true
         }
-        return true // Assume success for now
+        return false
     }
 
-    fun login(email: String, password: String): Boolean {
-        var success = false
-        viewModelScope.launch {
-            val existingUser = repository.getUserByEmail(email)
-            if (existingUser != null && existingUser.password == password) {
-                _currentUser.value = existingUser
-                _isLoggedIn.value = true
-                success = true
-            }
+    suspend fun login(email: String, password: String): Boolean {
+        val existingUser = repository.getUserByEmail(email)
+        if (existingUser != null && existingUser.password == password) {
+            _currentUser.value = existingUser
+            _isLoggedIn.value = true
+            return true
         }
-        return success
+        return false
     }
 
     fun logout() {
