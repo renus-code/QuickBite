@@ -1,0 +1,17 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+
+# Editor-based HTTP Client requests
+/httpRequests/
+
+# User-specific configurations
+/runConfigurations/
+/dataSources/
+/dataSources.xml/
+/dbnavigator.xml
+/sqldialects.xml
+/vcs.xml
+
+# Sensitive information
+/sonarlint/
