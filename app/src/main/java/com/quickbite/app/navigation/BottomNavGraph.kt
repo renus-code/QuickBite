@@ -1,11 +1,11 @@
 package com.quickbite.app.navigation
 
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 
 // IMPORTANT: Import ONLY the correct RestaurantsScreen from /ui/view/
 import com.quickbite.app.ui.view.RestaurantsScreen
@@ -15,6 +15,10 @@ import com.quickbite.app.ui.screens.ServicesScreen
 import com.quickbite.app.ui.screens.ActivityScreen
 import com.quickbite.app.ui.screens.AccountScreen
 import com.quickbite.app.ui.screens.SettingsScreen
+import com.quickbite.app.ui.screens.ServiceDetailScreen
+import com.quickbite.app.ui.screens.GiftCardLandingScreen
+import com.quickbite.app.ui.screens.PurchaseGiftCardScreen
+import com.quickbite.app.ui.screens.RedeemGiftCardScreen
 
 import com.quickbite.app.viewmodel.UserViewModel
 
@@ -26,7 +30,7 @@ fun BottomNavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Restaurants.route,
+        startDestination = Screen.Services.route, // Changed for independent development
         modifier = modifier
     ) {
         // RESTAURANTS SCREEN
@@ -44,10 +48,7 @@ fun BottomNavGraph(
 
         // ACTIVITY SCREEN
         composable(Screen.Activity.route) {
-            ActivityScreen(
-                userVM = userVM,
-                navController = navController
-            )
+            ActivityScreen()
         }
 
         // ACCOUNT SCREEN
@@ -65,5 +66,23 @@ fun BottomNavGraph(
                 userVM = userVM
             )
         }
+
+        // SERVICE DETAIL SCREEN
+        composable(
+            route = "serviceDetail/{serviceName}",
+            arguments = listOf(navArgument("serviceName") { defaultValue = "Unknown" })
+        ) { backStackEntry ->
+            val serviceName = backStackEntry.arguments?.getString("serviceName")
+            if (serviceName == "Gift Cards") {
+                GiftCardLandingScreen(navController)
+            } else {
+                ServiceDetailScreen(serviceName)
+            }
+        }
+
+        // GIFT CARD ROUTES
+        composable("giftCardLanding") { GiftCardLandingScreen(navController) }
+        composable("purchaseGiftCard") { PurchaseGiftCardScreen(navController, userVM) }
+        composable("redeemGiftCard") { RedeemGiftCardScreen(navController, userVM) }
     }
 }

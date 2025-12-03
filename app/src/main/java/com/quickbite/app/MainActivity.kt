@@ -9,6 +9,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModelProvider
 import com.quickbite.app.data.AppDatabase
+import com.quickbite.app.data.GiftCardRepository
 import com.quickbite.app.data.UserRepository
 import com.quickbite.app.navigation.NavGraph
 import com.quickbite.app.ui.theme.QuickBiteTheme
@@ -21,7 +22,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val database = AppDatabase.getDatabase(applicationContext)
             val userRepository = UserRepository(database.userDao())
-            val userViewModelFactory = UserViewModelFactory(userRepository)
+            val giftCardRepository = GiftCardRepository(database.giftCardDao())
+            val userViewModelFactory = UserViewModelFactory(userRepository, giftCardRepository)
             val userVM: UserViewModel = ViewModelProvider(this, userViewModelFactory).get(UserViewModel::class.java)
 
             val useDarkTheme by userVM.darkModeEnabled.collectAsState()
