@@ -49,6 +49,14 @@ class UserViewModel(
 
     fun setDarkMode(enabled: Boolean) {
         _darkModeEnabled.value = enabled
+        // Persist to database if user is logged in
+        viewModelScope.launch {
+            _currentUser.value?.let { user ->
+                val updatedUser = user.copy(isDarkMode = enabled)
+                repository.updateUser(updatedUser)
+                _currentUser.value = updatedUser
+            }
+        }
     }
     
     fun clearMessage() {
@@ -71,6 +79,8 @@ class UserViewModel(
         if (existingUser != null && existingUser.password == password) {
             _currentUser.value = existingUser
             _isLoggedIn.value = true
+            // Apply user's dark mode preference
+            _darkModeEnabled.value = existingUser.isDarkMode
             return true
         }
         return false
@@ -79,6 +89,40 @@ class UserViewModel(
     fun logout() {
         _currentUser.value = null
         _isLoggedIn.value = false
+        _darkModeEnabled.value = false // Reset to system default or false on logout
+    }
+
+    fun updateUserProfile(
+        phoneNumber: String? = null,
+        address: String? = null,
+        paymentMethod: String? = null,
+        avatarId: String? = null
+    ) {
+        viewModelScope.launch {
+            val currentUser = _currentUser.value
+            if (currentUser != null) {
+                val updatedUser = currentUser.copy(
+                    phoneNumber = phoneNumber ?: currentUser.phoneNumber,
+                    address = address ?: currentUser.address,
+                    paymentMethod = paymentMethod ?: currentUser.paymentMethod,
+                    avatarId = avatarId ?: currentUser.avatarId
+                )
+                repository.updateUser(updatedUser)
+                _currentUser.value = updatedUser
+                _message.value = "Profile Updated Successfully"
+            }
+        }
+    }
+
+    fun deleteAccount() {
+        viewModelScope.launch {
+            val currentUser = _currentUser.value
+            if (currentUser != null) {
+                repository.deleteUser(currentUser)
+                logout()
+                _message.value = "Account Deleted"
+            }
+        }
     }
 
     // --- Gift Card Logic ---
@@ -87,10 +131,12 @@ class UserViewModel(
         amount: Double,
         senderName: String,
         recipientName: String,
-        recipientEmail: String
+        recipientEmail: String,
+        customCode: String? = null
     ) {
         viewModelScope.launch {
-            val code = UUID.randomUUID().toString().substring(0, 8).uppercase()
+            // Use custom code if provided, otherwise generate one
+            val code = customCode ?: UUID.randomUUID().toString().substring(0, 8).uppercase()
             val giftCard = GiftCard(
                 code = code,
                 amount = amount,
@@ -99,24 +145,41 @@ class UserViewModel(
                 recipientEmail = recipientEmail
             )
             giftCardRepository.createGiftCard(giftCard)
-            _message.value = "Gift Card Purchased! Code: $code"
         }
     }
 
     fun redeemGiftCard(code: String) {
         viewModelScope.launch {
             val giftCard = giftCardRepository.getGiftCardByCode(code)
+            val currentUser = _currentUser.value
+
             if (giftCard != null) {
-                if (!giftCard.isRedeemed) {
-                    val updatedGiftCard = giftCard.copy(
-                        isRedeemed = true,
-                        redeemedByUserId = _currentUser.value?.id // Link to current user if logged in
-                    )
-                    giftCardRepository.updateGiftCard(updatedGiftCard)
-                    _message.value = "Success! $${giftCard.amount} added to your account."
-                    // TODO: Update actual user balance here if/when User entity supports it
+                if (currentUser != null) {
+                    // Security Check: Verify recipient email
+                    if (giftCard.recipientEmail.equals(currentUser.email, ignoreCase = true)) {
+                        if (!giftCard.isRedeemed) {
+                            val updatedGiftCard = giftCard.copy(
+                                isRedeemed = true,
+                                redeemedByUserId = currentUser.id
+                            )
+                            giftCardRepository.updateGiftCard(updatedGiftCard)
+                            
+                            // Update User Balance
+                            val newBalance = currentUser.balance + giftCard.amount
+                            val updatedUser = currentUser.copy(balance = newBalance)
+                            repository.updateUser(updatedUser)
+                            _currentUser.value = updatedUser
+
+                            _message.value = "Success! $${giftCard.amount} added to your account."
+
+                        } else {
+                            _message.value = "This gift card has already been redeemed."
+                        }
+                    } else {
+                        _message.value = "Failed: This card was sent to ${giftCard.recipientEmail}, not you."
+                    }
                 } else {
-                    _message.value = "This gift card has already been redeemed."
+                    _message.value = "Please log in to redeem."
                 }
             } else {
                 _message.value = "Invalid gift card code."
