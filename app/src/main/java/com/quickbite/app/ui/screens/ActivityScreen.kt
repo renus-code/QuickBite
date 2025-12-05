@@ -1,62 +1,68 @@
 package com.quickbite.app.ui.screens
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.HourglassEmpty
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-
-data class ActivityItem(
-    val orderId: String,
-    val status: String,
-    val statusColor: Color,
-    val icon: ImageVector
-)
+import com.quickbite.app.components.QuickBiteTopAppBar
+import com.quickbite.app.model.Order
+import com.quickbite.app.viewmodel.RestaurantViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
-fun ActivityScreen() {
-    val activities = listOf(
-        ActivityItem("Order #123", "Completed", Color(0xFF4CAF50), Icons.Default.CheckCircle),
-        ActivityItem("Order #124", "Pending", Color(0xFFFF9800), Icons.Default.HourglassEmpty),
-        ActivityItem("Order #125", "Cancelled", Color(0xFFF44336), Icons.Default.Cancel)
-    )
+fun ActivityScreen(restaurantVM: RestaurantViewModel) {
+    val recentOrders by restaurantVM.recentOrders.collectAsState()
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(activities) { activity ->
-            ActivityCard(activity)
+    Scaffold(
+        topBar = {
+            QuickBiteTopAppBar(
+                title = "User Activity", // Reverted to "User Activity"
+                canNavigateBack = false
+            )
+        }
+    ) { innerPadding ->
+        if (recentOrders.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No recent activity.", style = MaterialTheme.typography.bodyLarge)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(recentOrders) { order ->
+                    ActivityCard(order)
+                }
+            }
         }
     }
 }
 
 @Composable
-fun ActivityCard(activity: ActivityItem) {
+fun ActivityCard(order: Order) {
+    // Date formatter
+    val formatter = SimpleDateFormat("MMMM dd, yyyy - hh:mm a", Locale.getDefault())
+    val formattedDate = formatter.format(Date(order.timestamp))
+
     Card(
         modifier = Modifier
             .fillMaxWidth(),
@@ -71,22 +77,33 @@ fun ActivityCard(activity: ActivityItem) {
         ) {
             Column {
                 Text(
-                    text = activity.orderId,
+                    text = "Order #${order.orderId}",
                     style = MaterialTheme.typography.titleMedium
                 )
                 Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Items: ${order.items.joinToString()}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+                Text(
+                    text = "Total: $${String.format("%.2f", order.totalPrice)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                      Icon(
-                        imageVector = activity.icon,
-                        contentDescription = activity.status,
-                        tint = activity.statusColor,
+                        imageVector = Icons.Default.CheckCircle, // Assuming all are completed for now
+                        contentDescription = order.status,
+                        tint = Color(0xFF4CAF50),
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = activity.status,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = activity.statusColor
+                        text = "${order.status} on $formattedDate",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
                     )
                 }
             }

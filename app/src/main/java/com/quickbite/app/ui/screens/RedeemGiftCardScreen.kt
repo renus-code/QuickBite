@@ -11,6 +11,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.quickbite.app.components.QuickBiteTopAppBar
 import com.quickbite.app.viewmodel.UserViewModel
 
 @Composable
@@ -29,6 +30,13 @@ fun RedeemGiftCardScreen(navController: NavHostController, userVM: UserViewModel
     }
 
     Scaffold(
+        topBar = {
+            QuickBiteTopAppBar(
+                title = "Redeem Gift Card",
+                canNavigateBack = true,
+                navigateUp = { navController.popBackStack() }
+            )
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
@@ -77,12 +85,12 @@ fun RedeemGiftCardScreen(navController: NavHostController, userVM: UserViewModel
 
             Button(
                 onClick = {
-                     userVM.redeemGiftCard(giftCardCode)
+                     userVM.redeemGiftCard(giftCardCode.trim())
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                enabled = giftCardCode.isNotEmpty()
+                enabled = giftCardCode.trim().isNotEmpty() // Added trim() logic
             ) {
                 Text("Redeem")
             }
