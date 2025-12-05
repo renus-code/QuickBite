@@ -1,10 +1,11 @@
 package com.quickbite.app.components
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Fastfood
-import androidx.compose.material.icons.filled.ListAlt
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.Fastfood
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -17,7 +18,8 @@ fun BottomNavigationBar(navController: NavController) {
     // All bottom nav items
     val items = listOf(
         Screen.Restaurants,
-        Screen.Services,
+        Screen.GiftCards, // Changed from Services to GiftCards
+        Screen.Cart,
         Screen.Activity,
         Screen.Account
     )
@@ -32,7 +34,8 @@ fun BottomNavigationBar(navController: NavController) {
                     Icon(
                         imageVector = when (screen.route) {
                             "restaurants" -> Icons.Filled.Fastfood
-                            "services" -> Icons.Filled.ListAlt
+                            "giftCards" -> Icons.Filled.CardGiftcard // Updated icon for Gift Cards
+                            "cart" -> Icons.Filled.ShoppingCart
                             "activity" -> Icons.Filled.Person
                             "account" -> Icons.Filled.AccountCircle
                             else -> Icons.Filled.Person
@@ -52,7 +55,7 @@ fun BottomNavigationBar(navController: NavController) {
                 },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = Color.White,
-                    selectedTextColor = Color.White,
+                    selectedTextColor = Color.Blue,
                     unselectedIconColor = Color.Gray,
                     unselectedTextColor = Color.Gray,
                     indicatorColor = Color.Blue

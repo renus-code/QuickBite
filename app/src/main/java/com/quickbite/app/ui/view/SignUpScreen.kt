@@ -1,0 +1,175 @@
+package com.quickbite.app.ui.view
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import com.quickbite.app.R
+import com.quickbite.app.components.QuickBiteTopAppBar
+import com.quickbite.app.viewmodel.UserViewModel
+import kotlinx.coroutines.launch
+
+@Composable
+fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
+    var displayName by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf("") }
+
+    val scope = rememberCoroutineScope()
+
+    Scaffold { innerPadding -> // Removed topBar from Scaffold
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            // Background Image
+            Image(
+                painter = painterResource(id = R.drawable.auth_background),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Dark Overlay for readability
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.6f))
+            )
+
+            // Transparent Top Bar Overlay
+            QuickBiteTopAppBar(
+                title = "QuickBite", // Changed to App Name
+                canNavigateBack = false,
+                containerColor = Color.Transparent, // Transparent background
+                titleColor = Color.White, // White text
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding() // Avoid overlap with system status bar
+            )
+
+            // Content
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding) // Apply Scaffold padding here
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Create Account",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Color.White // Changed to white for contrast
+                )
+                
+                Spacer(modifier = Modifier.height(32.dp))
+
+                OutlinedTextField(
+                    value = displayName,
+                    onValueChange = { displayName = it; errorMessage = "" },
+                    label = { Text("Display Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White.copy(alpha = 0.9f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.9f),
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = Color.Gray
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it; errorMessage = "" },
+                    label = { Text("Email") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White.copy(alpha = 0.9f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.9f),
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = Color.Gray
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it; errorMessage = "" },
+                    label = { Text("Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White.copy(alpha = 0.9f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.9f),
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = Color.Gray
+                    )
+                )
+
+                if (errorMessage.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(errorMessage, color = Color(0xFFFF5252)) // Bright red error text
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = {
+                        if (displayName.isBlank()) {
+                            errorMessage = "Enter a display name"
+                        } else if (!email.contains("@") || !email.contains(".")) {
+                            errorMessage = "Enter a valid email"
+                        } else if (password.length < 6) {
+                            errorMessage = "Password must be at least 6 characters"
+                        } else {
+                            scope.launch {
+                                val success = userVM.signup(email, password, displayName)
+                                if (success) {
+                                    navController.navigate("signin") {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                } else {
+                                    errorMessage = "User already exists"
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Sign Up")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Already have an account? Sign In",
+                    modifier = Modifier.clickable { navController.navigate("signin") },
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+        }
+    }
+}
