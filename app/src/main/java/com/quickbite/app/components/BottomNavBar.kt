@@ -9,48 +9,44 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.navigation.NavController
-import androidx.navigation.compose.currentBackStackEntryAsState
-import com.quickbite.app.navigation.Screen
+import com.quickbite.app.navigation.Route
 
 @Composable
-fun BottomNavigationBar(navController: NavController) {
-    // All bottom nav items
+fun BottomNavigationBar(
+    currentTab: String,
+    onTabSelected: (String) -> Unit
+) {
     val items = listOf(
-        Screen.Restaurants,
-        Screen.GiftCards, // Changed from Services to GiftCards
-        Screen.Cart,
-        Screen.Activity,
-        Screen.Account
+        Route.Restaurants,
+        Route.GiftCards,
+        Route.Cart,
+        Route.Activity,
+        Route.Account
     )
 
     NavigationBar(containerColor = Color.White) {
-        val navBackStackEntry = navController.currentBackStackEntryAsState()
-        val currentRoute = navBackStackEntry.value?.destination?.route
-
         items.forEach { screen ->
+            val isSelected = currentTab == screen.route
+
             NavigationBarItem(
                 icon = {
                     Icon(
                         imageVector = when (screen.route) {
-                            "restaurants" -> Icons.Filled.Fastfood
-                            "giftCards" -> Icons.Filled.CardGiftcard // Updated icon for Gift Cards
-                            "cart" -> Icons.Filled.ShoppingCart
-                            "activity" -> Icons.Filled.Person
-                            "account" -> Icons.Filled.AccountCircle
+                            Route.Restaurants.route -> Icons.Filled.Fastfood
+                            Route.GiftCards.route -> Icons.Filled.CardGiftcard
+                            Route.Cart.route -> Icons.Filled.ShoppingCart
+                            Route.Activity.route -> Icons.Filled.Person
+                            Route.Account.route -> Icons.Filled.AccountCircle
                             else -> Icons.Filled.Person
                         },
                         contentDescription = screen.title
                     )
                 },
                 label = { Text(screen.title) },
-                selected = currentRoute == screen.route,
+                selected = isSelected,
                 onClick = {
-                    if (currentRoute != screen.route) {
-                        navController.navigate(screen.route) {
-                            popUpTo(navController.graph.startDestinationId)
-                            launchSingleTop = true
-                        }
+                    if (!isSelected) {
+                        onTabSelected(screen.route)
                     }
                 },
                 colors = NavigationBarItemDefaults.colors(

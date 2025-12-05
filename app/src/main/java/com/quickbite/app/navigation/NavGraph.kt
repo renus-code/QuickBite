@@ -10,9 +10,10 @@ import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.quickbite.app.ui.screens.AccountScreen
 import com.quickbite.app.ui.screens.SettingsScreen
-import com.quickbite.app.ui.view.MainBottomNavigationScreen
+import com.quickbite.app.ui.view.HomeScreen
 import com.quickbite.app.ui.view.SignInScreen
 import com.quickbite.app.ui.view.SignUpScreen
+import com.quickbite.app.viewmodel.MenuViewModel
 import com.quickbite.app.viewmodel.RestaurantViewModel
 import com.quickbite.app.viewmodel.UserViewModel
 
@@ -20,13 +21,14 @@ import com.quickbite.app.viewmodel.UserViewModel
 fun NavGraph(
     navController: NavHostController = rememberNavController(),
     userVM: UserViewModel = viewModel(),
-    restaurantVM: RestaurantViewModel // Added parameter
+    restaurantVM: RestaurantViewModel,
+    menuVM: MenuViewModel
 ) {
     val isLoggedIn by userVM.isLoggedIn.collectAsState(initial = false)
 
     NavHost(
         navController = navController,
-        startDestination = "signup"
+        startDestination = "signin"
     ) {
         composable("signin") {
             SignInScreen(navController = navController, userVM = userVM)
@@ -35,10 +37,11 @@ fun NavGraph(
             SignUpScreen(navController = navController, userVM = userVM)
         }
         composable("home") {
-            MainBottomNavigationScreen(
+            HomeScreen(
                 parentNavController = navController,
                 userVM = userVM,
-                restaurantVM = restaurantVM // Pass it down
+                restaurantVM = restaurantVM,
+                menuVM = menuVM
             )
         }
         composable("account") {

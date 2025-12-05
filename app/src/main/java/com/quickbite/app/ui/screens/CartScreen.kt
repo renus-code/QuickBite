@@ -13,18 +13,19 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.quickbite.app.components.QuickBiteTopAppBar
-import com.quickbite.app.viewmodel.FoodItem
+import com.quickbite.app.model.FoodItem
+import com.quickbite.app.viewmodel.MenuViewModel
 import com.quickbite.app.viewmodel.RestaurantViewModel
 
 @Composable
 fun CartScreen(
-    restaurantVM: RestaurantViewModel = viewModel(),
+    menuVM: MenuViewModel = viewModel(),
     navController: NavHostController? = null,
     isBottomNav: Boolean = false // Added parameter
 ) {
-    val cartItems by restaurantVM.cartItems.collectAsState()
-    val showDialog by restaurantVM.showOrderStatusDialog.collectAsState()
-    val statusMessage by restaurantVM.orderStatusMessage.collectAsState()
+    val cartItems by menuVM.cartItems.collectAsState()
+    val showDialog by menuVM.showOrderStatusDialog.collectAsState()
+    val statusMessage by menuVM.orderStatusMessage.collectAsState()
 
     if (showDialog) {
         AlertDialog(
@@ -68,7 +69,7 @@ fun CartScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
-                    onClick = { restaurantVM.placeOrder() },
+                    onClick = { menuVM.placeOrder() },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Place Order")

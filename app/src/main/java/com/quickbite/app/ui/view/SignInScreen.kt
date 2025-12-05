@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.quickbite.app.R
 import com.quickbite.app.components.QuickBiteTopAppBar
-import com.quickbite.app.navigation.Screen
 import com.quickbite.app.viewmodel.UserViewModel
 import kotlinx.coroutines.launch
 

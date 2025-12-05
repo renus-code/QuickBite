@@ -4,11 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.quickbite.app.data.OrderRepository
 
-class RestaurantViewModelFactory(private val orderRepository: OrderRepository) : ViewModelProvider.Factory {
+class MenuViewModelFactory(private val orderRepository: OrderRepository) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(RestaurantViewModel::class.java)) {
+        if (modelClass.isAssignableFrom(MenuViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return RestaurantViewModel(orderRepository) as T
+            return MenuViewModel(orderRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

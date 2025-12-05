@@ -15,14 +15,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.quickbite.app.components.QuickBiteTopAppBar
 import com.quickbite.app.model.Order
+import com.quickbite.app.viewmodel.MenuViewModel
 import com.quickbite.app.viewmodel.RestaurantViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 @Composable
-fun ActivityScreen(restaurantVM: RestaurantViewModel) {
-    val recentOrders by restaurantVM.recentOrders.collectAsState()
+fun ActivityScreen(menuVM: MenuViewModel) {
+    val recentOrders by menuVM.recentOrders.collectAsState()
 
     Scaffold(
         topBar = {

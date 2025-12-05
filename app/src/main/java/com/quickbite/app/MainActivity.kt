@@ -8,16 +8,22 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.rememberNavController
 import com.quickbite.app.data.AppDatabase
 import com.quickbite.app.data.GiftCardRepository
 import com.quickbite.app.data.OrderRepository
 import com.quickbite.app.data.UserRepository
+import com.quickbite.app.navigation.BottomNavGraph
 import com.quickbite.app.navigation.NavGraph
 import com.quickbite.app.ui.theme.QuickBiteTheme
+import com.quickbite.app.viewmodel.MenuViewModel
+import com.quickbite.app.viewmodel.MenuViewModelFactory
 import com.quickbite.app.viewmodel.UserViewModel
 import com.quickbite.app.viewmodel.UserViewModelFactory
 import com.quickbite.app.viewmodel.RestaurantViewModel
-import com.quickbite.app.viewmodel.RestaurantViewModelFactory
+
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,19 +37,32 @@ class MainActivity : ComponentActivity() {
 
             // ViewModel Factories
             val userViewModelFactory = UserViewModelFactory(userRepository, giftCardRepository)
-            val restaurantViewModelFactory = RestaurantViewModelFactory(orderRepository)
+            val menuViewModelFactory = MenuViewModelFactory(orderRepository)
 
             // ViewModels
-            val userVM: UserViewModel = ViewModelProvider(this, userViewModelFactory).get(UserViewModel::class.java)
-            val restaurantVM: RestaurantViewModel = ViewModelProvider(this, restaurantViewModelFactory).get(RestaurantViewModel::class.java)
+            val userVM: UserViewModel = ViewModelProvider(this, userViewModelFactory)
+                .get(UserViewModel::class.java)
+            val menuVM: MenuViewModel = ViewModelProvider(this, menuViewModelFactory)
+                .get(MenuViewModel::class.java)
+
+
+            // RestaurantViewModel has a default constructor, no factory needed
+            val restaurantVM: RestaurantViewModel = viewModel()
 
             val useDarkTheme by userVM.darkModeEnabled.collectAsState()
 
             QuickBiteTheme(darkTheme = useDarkTheme) {
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    NavGraph(userVM = userVM, restaurantVM = restaurantVM)
+                    NavGraph(
+                        navController = rememberNavController(),
+                        userVM = userVM,
+                        restaurantVM = restaurantVM,
+                        menuVM = menuVM
+                    )
                 }
             }
         }
     }
 }
+
+
