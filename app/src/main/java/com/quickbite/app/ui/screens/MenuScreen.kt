@@ -46,6 +46,11 @@ fun MenuScreen(
         }
     }
 
+    LaunchedEffect(restaurantName) {
+        menuVM.loadMealsForRestaurant(restaurantName)
+    }
+
+
     Scaffold(
         topBar = {
             Column {

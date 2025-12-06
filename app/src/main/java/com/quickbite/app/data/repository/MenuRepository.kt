@@ -24,7 +24,7 @@ class MenuRepository {
     }
 
 
-    suspend fun getFoodItems(firstLetter: Char? = null): List<FoodItem> {
+    suspend fun getMealsByFirstLetter(firstLetter: Char? = null): List<FoodItem> {
         val response = if (firstLetter != null) {
             api.getMealsByFirstLetter(firstLetter.toString())
         } else {
