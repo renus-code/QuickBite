@@ -1,35 +1,44 @@
 package com.quickbite.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.quickbite.app.components.QuickBiteTopAppBar
-import com.quickbite.app.model.FoodItem
+import com.quickbite.app.model.CartItem
 import com.quickbite.app.viewmodel.MenuViewModel
-import com.quickbite.app.viewmodel.RestaurantViewModel
 
 @Composable
 fun CartScreen(
     menuVM: MenuViewModel = viewModel(),
     navController: NavHostController? = null,
-    isBottomNav: Boolean = false // Added parameter
+    isBottomNav: Boolean = false
 ) {
     val cartItems by menuVM.cartItems.collectAsState()
     val showDialog by menuVM.showOrderStatusDialog.collectAsState()
     val statusMessage by menuVM.orderStatusMessage.collectAsState()
 
+    val subtotal = cartItems.sumOf { it.item.price * it.quantity }
+    val taxRate = 0.13
+    val taxes = subtotal * taxRate
+    val total = subtotal + taxes
+
     if (showDialog) {
         AlertDialog(
-            onDismissRequest = { /* Don't allow dismissal */ },
+            onDismissRequest = {},
             title = { Text("Order Status") },
             text = { Text(statusMessage) },
             confirmButton = {}
@@ -40,7 +49,7 @@ fun CartScreen(
         topBar = {
             QuickBiteTopAppBar(
                 title = "Cart",
-                canNavigateBack = !isBottomNav, // Hide back button if on bottom nav
+                canNavigateBack = !isBottomNav,
                 navigateUp = { navController?.popBackStack() }
             )
         }
@@ -59,10 +68,43 @@ fun CartScreen(
                     Text("Your cart is empty.", style = MaterialTheme.typography.bodyLarge)
                 }
             } else {
-                LazyColumn(modifier = Modifier.weight(1f)) {
-                    items(cartItems) { item ->
-                        CartItemRow(item)
-                        HorizontalDivider()
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    items(cartItems, key = { it.item.id }) { cartItem ->
+                        CartItemRow(cartItem, menuVM)
+                        Divider()
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Pricing Section
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Subtotal", fontWeight = FontWeight.Bold)
+                        Text("$${"%.2f".format(subtotal)}", fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Taxes (13%)")
+                        Text("$${"%.2f".format(taxes)}")
+                    }
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Total", fontWeight = FontWeight.Bold)
+                        Text("$${"%.2f".format(total)}", fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -70,7 +112,9 @@ fun CartScreen(
 
                 Button(
                     onClick = { menuVM.placeOrder() },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(55.dp)
                 ) {
                     Text("Place Order")
                 }
@@ -80,7 +124,7 @@ fun CartScreen(
 }
 
 @Composable
-fun CartItemRow(item: FoodItem) {
+fun CartItemRow(cartItem: CartItem, menuVM: MenuViewModel) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -88,7 +132,23 @@ fun CartItemRow(item: FoodItem) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = item.name, style = MaterialTheme.typography.bodyLarge)
-        Text(text = "$${item.price}", style = MaterialTheme.typography.bodyLarge)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(cartItem.item.name, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                "$${"%.2f".format(cartItem.item.price * cartItem.quantity)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { menuVM.decreaseQuantity(cartItem.item) }) {
+                Icon(Icons.Default.Remove, contentDescription = "Decrease quantity")
+            }
+            Text(cartItem.quantity.toString(), fontWeight = FontWeight.Bold)
+            IconButton(onClick = { menuVM.increaseQuantity(cartItem.item) }) {
+                Icon(Icons.Default.Add, contentDescription = "Increase quantity")
+            }
+        }
     }
 }

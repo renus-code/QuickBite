@@ -1,5 +1,6 @@
 package com.quickbite.app.navigation
 
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -29,7 +30,7 @@ fun BottomNavGraph(
     NavHost(
         navController = navController,
         startDestination = Route.Restaurants.route,
-        modifier = modifier
+        modifier = Modifier.fillMaxSize()
     ) {
 
         // Restaurants Nested Graph

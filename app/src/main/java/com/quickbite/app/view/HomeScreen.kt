@@ -1,5 +1,6 @@
 package com.quickbite.app.ui.view
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
@@ -46,34 +47,37 @@ fun HomeScreen(
                 onTabSelected = { selectedTab = it }
             )
         }
-    ) { innerPadding ->
+    ) { innerPadding -> // This padding is crucial
 
-        tabNavControllers.forEach { (route, navController) ->
-            if (route == selectedTab) {
-                when (route) {
-                    Route.Restaurants.route -> {
-                        // Use Restaurants nested NavGraph
-                        BottomNavGraph(
-                            navController = navController,
-                            userVM = userVM,
-                            restaurantVM = restaurantVM,
-                            menuVM = menuVM,
-                            onLogout = {
-                                parentNavController.navigate("signin") {
-                                    popUpTo(parentNavController.graph.startDestinationId) { inclusive = true }
+        // This Box will apply the padding to whichever screen is currently selected.
+        Box(modifier = Modifier.padding(innerPadding)) {
+            when (selectedTab) {
+                Route.Restaurants.route -> {
+                    // Use Restaurants nested NavGraph
+                    // Remove the padding from here since the parent Box handles it now.
+                    BottomNavGraph(
+                        navController = restaurantNavController,
+                        userVM = userVM,
+                        restaurantVM = restaurantVM,
+                        menuVM = menuVM,
+                        onLogout = {
+                            parentNavController.navigate("signin") {
+                                popUpTo(parentNavController.graph.startDestinationId) {
+                                    inclusive = true
                                 }
-                            },
-                            modifier = Modifier.padding(innerPadding)
-                        )
-                    }
+                            }
+                        },
+                        modifier = Modifier // Padding is now handled by the parent Box
+                    )
+                }
 
-                    Route.GiftCards.route -> GiftCardLandingScreen(navController)
-                    Route.Cart.route -> CartScreen(menuVM, navController, isBottomNav = true)
-                    Route.Activity.route -> ActivityScreen(menuVM)
-                    Route.Account.route -> AccountScreen(navController, userVM) {
-                        parentNavController.navigate("signin") {
-                            popUpTo(parentNavController.graph.startDestinationId) { inclusive = true }
-                        }
+                // All other screens are now correctly padded by the parent Box
+                Route.GiftCards.route -> GiftCardLandingScreen(giftCardsNavController)
+                Route.Cart.route -> CartScreen(menuVM, cartNavController, isBottomNav = true)
+                Route.Activity.route -> ActivityScreen(menuVM)
+                Route.Account.route -> AccountScreen(accountNavController, userVM) {
+                    parentNavController.navigate("signin") {
+                        popUpTo(parentNavController.graph.startDestinationId) { inclusive = true }
                     }
                 }
             }

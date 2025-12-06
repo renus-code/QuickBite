@@ -13,7 +13,7 @@ import com.quickbite.app.viewmodel.UserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(navController: NavController, userVM: UserViewModel) {
+fun _unused(navController: NavController, userVM: UserViewModel) {
     val user by userVM.user.collectAsState()
     var showMenu by remember { mutableStateOf(false) }
 

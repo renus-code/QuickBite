@@ -1,5 +1,7 @@
 package com.quickbite.app.ui.screens
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,6 +23,7 @@ import com.quickbite.app.model.FoodItem
 import com.quickbite.app.viewmodel.MenuViewModel
 import kotlinx.coroutines.launch
 
+@RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
 @Composable
 fun MenuScreen(
     menuVM: MenuViewModel,
@@ -35,11 +38,19 @@ fun MenuScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    // Local function to show latest snackbar
+    fun showMessage(message: String) {
+        scope.launch {
+            snackbarHostState.currentSnackbarData?.dismiss() // dismiss existing
+            snackbarHostState.showSnackbar(message) // show new
+        }
+    }
+
     Scaffold(
         topBar = {
             Column {
                 QuickBiteTopAppBar(
-                    title = restaurantName, // Show restaurant name
+                    title = restaurantName,
                     canNavigateBack = true,
                     navigateUp = onBack
                 )
@@ -105,9 +116,7 @@ fun MenuScreen(
                                     food = food,
                                     onAddToCart = {
                                         menuVM.addToCart(food)
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("${food.name} added to cart")
-                                        }
+                                        showMessage("${food.name} added to cart")
                                     }
                                 )
                             }
@@ -214,7 +223,7 @@ fun FoodCard(food: FoodItem, onAddToCart: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = food.name, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = "$${food.price}",
+                    text = "$${"%.2f".format(food.price)}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
