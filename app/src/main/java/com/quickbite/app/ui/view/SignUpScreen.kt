@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,7 +19,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.quickbite.app.R
-import com.quickbite.app.components.QuickBiteTopAppBar
 import com.quickbite.app.viewmodel.UserViewModel
 import kotlinx.coroutines.launch
 
@@ -30,11 +31,8 @@ fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
 
     val scope = rememberCoroutineScope()
 
-    Scaffold { innerPadding -> // Removed topBar from Scaffold
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
+    Scaffold { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize()) {
             // Background Image
             Image(
                 painter = painterResource(id = R.drawable.auth_background),
@@ -43,29 +41,33 @@ fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Dark Overlay for readability
+            // Dark Overlay
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.6f))
             )
 
-            // Transparent Top Bar Overlay
-            QuickBiteTopAppBar(
-                title = "QuickBite", // Changed to App Name
-                canNavigateBack = false,
-                containerColor = Color.Transparent, // Transparent background
-                titleColor = Color.White, // White text
+            // SAFE TITLE HEADER
+            Row(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .statusBarsPadding() // Avoid overlap with system status bar
-            )
+                    .statusBarsPadding()
+                    .padding(top = 16.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "QuickBite",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Color.White
+                )
+            }
 
             // Content
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding) // Apply Scaffold padding here
+                    .padding(innerPadding)
                     .padding(16.dp),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -73,9 +75,9 @@ fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
                 Text(
                     text = "Create Account",
                     style = MaterialTheme.typography.headlineMedium,
-                    color = Color.White // Changed to white for contrast
+                    color = Color.White
                 )
-                
+
                 Spacer(modifier = Modifier.height(32.dp))
 
                 OutlinedTextField(
@@ -85,9 +87,7 @@ fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = Color.White.copy(alpha = 0.9f),
-                        unfocusedContainerColor = Color.White.copy(alpha = 0.9f),
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        unfocusedLabelColor = Color.Gray
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.9f)
                     )
                 )
 
@@ -101,9 +101,7 @@ fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = Color.White.copy(alpha = 0.9f),
-                        unfocusedContainerColor = Color.White.copy(alpha = 0.9f),
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        unfocusedLabelColor = Color.Gray
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.9f)
                     )
                 )
 
@@ -114,18 +112,17 @@ fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
                     onValueChange = { password = it; errorMessage = "" },
                     label = { Text("Password") },
                     visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = Color.White.copy(alpha = 0.9f),
-                        unfocusedContainerColor = Color.White.copy(alpha = 0.9f),
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        unfocusedLabelColor = Color.Gray
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.9f)
                     )
                 )
 
                 if (errorMessage.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(errorMessage, color = Color(0xFFFF5252)) // Bright red error text
+                    Text(errorMessage, color = Color(0xFFFF5252))
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -134,10 +131,10 @@ fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
                     onClick = {
                         if (displayName.isBlank()) {
                             errorMessage = "Enter a display name"
-                        } else if (!email.contains("@") || !email.contains(".")) {
+                        } else if (!email.contains("@")) {
                             errorMessage = "Enter a valid email"
                         } else if (password.length < 6) {
-                            errorMessage = "Password must be at least 6 characters"
+                            errorMessage = "Password too short"
                         } else {
                             scope.launch {
                                 val success = userVM.signup(email, password, displayName)
@@ -151,9 +148,7 @@ fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
                             }
                         }
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
@@ -166,8 +161,7 @@ fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
                 Text(
                     text = "Already have an account? Sign In",
                     modifier = Modifier.clickable { navController.navigate("signin") },
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyLarge
+                    color = Color.White
                 )
             }
         }

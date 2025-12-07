@@ -10,9 +10,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.quickbite.app.ui.screens.AccountScreen
 import com.quickbite.app.ui.screens.SettingsScreen
-import com.quickbite.app.ui.view.HomeScreen
 import com.quickbite.app.ui.view.SignInScreen
 import com.quickbite.app.ui.view.SignUpScreen
+import com.quickbite.app.view.HomeScreen
 import com.quickbite.app.viewmodel.MenuViewModel
 import com.quickbite.app.viewmodel.RestaurantViewModel
 import com.quickbite.app.viewmodel.UserViewModel

@@ -1,12 +1,10 @@
 package com.quickbite.app.ui.screens
 
 import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -46,7 +44,7 @@ fun PurchaseGiftCardScreen(navController: NavHostController, userVM: UserViewMod
 
     val message by userVM.message.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current 
+    val context = LocalContext.current
 
     LaunchedEffect(message) {
         message?.let {
@@ -58,9 +56,8 @@ fun PurchaseGiftCardScreen(navController: NavHostController, userVM: UserViewMod
     // Success Dialog
     if (showSuccessDialog) {
         AlertDialog(
-            onDismissRequest = { 
-                // When dismissed, go back to previous screen
-                showSuccessDialog = false 
+            onDismissRequest = {
+                showSuccessDialog = false
                 navController.popBackStack()
             },
             title = { Text("Purchase Successful!") },
@@ -76,7 +73,7 @@ fun PurchaseGiftCardScreen(navController: NavHostController, userVM: UserViewMod
                         color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("An email draft has been opened for you to send this code to $recipientName.")
+                    Text("An email draft (or share option) has been opened for you to send this code to $recipientName.")
                 }
             },
             confirmButton = {
@@ -122,11 +119,14 @@ fun PurchaseGiftCardScreen(navController: NavHostController, userVM: UserViewMod
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                // Switched to Row + horizontalScroll to avoid Lazy layout nesting issues
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(presets) { preset ->
+                    presets.forEach { preset ->
                         SuggestionChip(
                             onClick = { amount = preset },
                             label = { Text("$$preset") },
@@ -224,20 +224,22 @@ fun PurchaseGiftCardScreen(navController: NavHostController, userVM: UserViewMod
                 onClick = {
                     val amountValue = amount.toDoubleOrNull()
                     if (amountValue != null) {
-                        // Generate Code
                         val newCode = "QBGIFT-${System.currentTimeMillis().toString().takeLast(4)}"
                         generatedCode = newCode
-                        
+
                         // 1. Update ViewModel
                         userVM.purchaseGiftCard(
                             amount = amountValue,
                             senderName = senderName,
                             recipientName = recipientName,
                             recipientEmail = recipientEmail,
-                            customCode = newCode // PASS THE CODE HERE
+                            customCode = newCode
                         )
 
-                        // 2. Send Email Intent
+                        // 2. Show Success Dialog Immediately
+                        showSuccessDialog = true
+
+                        // 3. Send Email/Share Intent (Safe Mode)
                         val emailSubject = "QuickBite Gift Card from $senderName"
                         val emailBody = """
                             Hi $recipientName,
@@ -252,35 +254,34 @@ fun PurchaseGiftCardScreen(navController: NavHostController, userVM: UserViewMod
                             The QuickBite Team
                         """.trimIndent()
 
+                        // Changed to text/plain to support broader sharing options (SMS, Notes, etc.)
                         val emailIntent = Intent(Intent.ACTION_SEND).apply {
-                            type = "message/rfc822"
+                            type = "text/plain" 
                             putExtra(Intent.EXTRA_EMAIL, arrayOf(recipientEmail))
                             putExtra(Intent.EXTRA_SUBJECT, emailSubject)
                             putExtra(Intent.EXTRA_TEXT, emailBody)
                         }
-                        
+
                         try {
                             context.startActivity(Intent.createChooser(emailIntent, "Send Gift Card via..."))
                         } catch (e: Exception) {
-                            Toast.makeText(context, "No email app found", Toast.LENGTH_SHORT).show()
+                            // Catch any activity not found errors to prevent crash
+                            Toast.makeText(context, "Could not launch share app", Toast.LENGTH_SHORT).show()
                         }
-                        
-                        // 3. Show Success Dialog (Don't popBackStack yet)
-                        showSuccessDialog = true
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                enabled = amount.isNotBlank() && 
-                          recipientEmail.contains("@") && 
-                          cardNumber.length >= 10 && 
-                          expiryDate.length >= 4 && 
-                          cvv.length >= 3
+                enabled = amount.isNotBlank() &&
+                        recipientEmail.contains("@") &&
+                        cardNumber.length >= 10 &&
+                        expiryDate.length >= 4 &&
+                        cvv.length >= 3
             ) {
                 Text("Pay & Send Gift Card")
             }
-            
+
             Spacer(modifier = Modifier.height(24.dp))
         }
     }

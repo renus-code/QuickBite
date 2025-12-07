@@ -1,5 +1,7 @@
 package com.quickbite.app.navigation
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -7,17 +9,12 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navigation
-import com.quickbite.app.ui.screens.RestaurantsScreen
-import com.quickbite.app.ui.screens.MenuScreen
-import com.quickbite.app.ui.screens.ActivityScreen
-import com.quickbite.app.ui.screens.AccountScreen
-import com.quickbite.app.ui.screens.SettingsScreen
-import com.quickbite.app.ui.screens.GiftCardLandingScreen
-import com.quickbite.app.ui.screens.CartScreen
+import com.quickbite.app.ui.screens.*
 import com.quickbite.app.viewmodel.MenuViewModel
 import com.quickbite.app.viewmodel.RestaurantViewModel
 import com.quickbite.app.viewmodel.UserViewModel
 
+@RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
 @Composable
 fun BottomNavGraph(
     navController: NavHostController,
@@ -39,7 +36,6 @@ fun BottomNavGraph(
             route = Route.Restaurants.route
         ) {
             composable("restaurants/list") {
-                // Pass a lambda for handling restaurant click
                 RestaurantsScreen(
                     navController = navController,
                     restaurantVM = restaurantVM,
@@ -51,6 +47,7 @@ fun BottomNavGraph(
 
             composable("restaurants/menu/{restaurantName}") { backStackEntry ->
                 val restaurantName = backStackEntry.arguments?.getString("restaurantName") ?: "Menu"
+
                 MenuScreen(
                     menuVM = menuVM,
                     restaurantName = restaurantName,
@@ -59,9 +56,31 @@ fun BottomNavGraph(
             }
         }
 
-        // Gift Cards
-        composable(Route.GiftCards.route) {
-            GiftCardLandingScreen(navController = navController)
+        // --- PAYMENTS & GIFT CARDS GRAPH ---
+        navigation(
+            startDestination = "payments_home",
+            route = Route.GiftCards.route
+        ) {
+            // 1. Main Payments Hub
+            composable("payments_home") {
+                // Pass userVM here so PaymentsScreen can show balance
+                PaymentsScreen(navController = navController, userVM = userVM)
+            }
+
+            // 2. Gift Card Landing
+            composable("gift_card_landing") {
+                GiftCardLandingScreen(navController = navController)
+            }
+
+            // 3. Purchase Screen
+            composable("purchaseGiftCard") {
+                PurchaseGiftCardScreen(navController = navController, userVM = userVM)
+            }
+
+            // 4. Redeem Screen
+            composable("redeemGiftCard") {
+                RedeemGiftCardScreen(navController = navController, userVM = userVM)
+            }
         }
 
         // Cart

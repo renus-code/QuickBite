@@ -17,7 +17,7 @@ import com.quickbite.app.viewmodel.UserViewModel
 @Composable
 fun RedeemGiftCardScreen(navController: NavHostController, userVM: UserViewModel) {
     var giftCardCode by remember { mutableStateOf("") }
-    
+
     val message by userVM.message.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -53,7 +53,7 @@ fun RedeemGiftCardScreen(navController: NavHostController, userVM: UserViewModel
                 modifier = Modifier.size(80.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
-            
+
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
@@ -61,7 +61,7 @@ fun RedeemGiftCardScreen(navController: NavHostController, userVM: UserViewModel
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
@@ -85,7 +85,7 @@ fun RedeemGiftCardScreen(navController: NavHostController, userVM: UserViewModel
 
             Button(
                 onClick = {
-                     userVM.redeemGiftCard(giftCardCode.trim())
+                    userVM.redeemGiftCard(giftCardCode.trim())
                 },
                 modifier = Modifier
                     .fillMaxWidth()

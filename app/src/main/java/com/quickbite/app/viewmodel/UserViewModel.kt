@@ -89,7 +89,9 @@ class UserViewModel(
     fun logout() {
         _currentUser.value = null
         _isLoggedIn.value = false
-        _darkModeEnabled.value = false // Reset to system default or false on logout
+        // REMOVED: _darkModeEnabled.value = false 
+        // We keep the current theme to prevent the "white flash" during logout transition.
+        // The next user can change it if they want.
     }
 
     fun updateUserProfile(

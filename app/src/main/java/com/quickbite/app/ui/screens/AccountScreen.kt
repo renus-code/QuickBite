@@ -1,5 +1,8 @@
 package com.quickbite.app.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,6 +14,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
@@ -19,12 +23,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.quickbite.app.components.QuickBiteTopAppBar
 import com.quickbite.app.viewmodel.UserViewModel
 
@@ -32,11 +41,12 @@ import com.quickbite.app.viewmodel.UserViewModel
 fun AccountScreen(
     navController: NavHostController,
     userVM: UserViewModel,
-    onLogout: () -> Unit = {} // Added callback
+    onLogout: () -> Unit = {}
 ) {
     val user by userVM.user.collectAsState()
     val message by userVM.message.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     // Dialog States
     var showEditDialog by remember { mutableStateOf(false) }
@@ -48,6 +58,16 @@ fun AccountScreen(
     var editPaymentDetail by remember { mutableStateOf("") }
     var selectedPaymentType by remember { mutableStateOf("Credit Card") }
     var editingType by remember { mutableStateOf("Profile") } // "Profile", "Payment", "Address"
+
+    // Photo Picker Launcher
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            // Update user profile with the selected URI string
+            userVM.updateUserProfile(avatarId = it.toString())
+        }
+    }
 
     LaunchedEffect(message) {
         message?.let {
@@ -85,27 +105,47 @@ fun AccountScreen(
             onDismissRequest = { showAvatarDialog = false },
             title = { Text("Choose Profile Picture") },
             text = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    val avatars = listOf("avatar_1" to Color(0xFF2196F3), "avatar_2" to Color(0xFFE91E63), "avatar_3" to Color(0xFF4CAF50), "avatar_4" to Color(0xFFFF9800))
-                    avatars.forEach { (id, color) ->
-                        Box(
-                            modifier = Modifier
-                                .size(50.dp)
-                                .background(color, CircleShape)
-                                .clickable {
-                                    userVM.updateUserProfile(avatarId = id)
-                                    showAvatarDialog = false
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                tint = Color.White
-                            )
+                Column {
+                    // Option 1: Choose from Gallery
+                    OutlinedButton(
+                        onClick = {
+                            showAvatarDialog = false
+                            photoPickerLauncher.launch("image/*")
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Image, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Choose from Photos")
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Or choose a color:", style = MaterialTheme.typography.labelMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Option 2: Preset Colors
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        val avatars = listOf("avatar_1" to Color(0xFF2196F3), "avatar_2" to Color(0xFFE91E63), "avatar_3" to Color(0xFF4CAF50), "avatar_4" to Color(0xFFFF9800))
+                        avatars.forEach { (id, color) ->
+                            Box(
+                                modifier = Modifier
+                                    .size(50.dp)
+                                    .background(color, CircleShape)
+                                    .clickable {
+                                        userVM.updateUserProfile(avatarId = id)
+                                        showAvatarDialog = false
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = Color.White
+                                )
+                            }
                         }
                     }
                 }
@@ -194,7 +234,7 @@ fun AccountScreen(
     Scaffold(
         topBar = {
             QuickBiteTopAppBar(
-                title = "User Account", // Reverted to "User Account"
+                title = "User Account",
                 canNavigateBack = false
             )
         },
@@ -203,7 +243,7 @@ fun AccountScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background) // Use theme background
+                .background(MaterialTheme.colorScheme.background)
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
         ) {
@@ -211,41 +251,69 @@ fun AccountScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface) // Use theme surface
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(24.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     // Avatar Logic
-                    val avatarColor = when (user?.avatarId) {
-                        "avatar_1" -> Color(0xFF2196F3)
-                        "avatar_2" -> Color(0xFFE91E63)
-                        "avatar_3" -> Color(0xFF4CAF50)
-                        "avatar_4" -> Color(0xFFFF9800)
-                        else -> Color(0xFFE0E0E0) // Light gray default
-                    }
+                    val avatarId = user?.avatarId
                     
                     Box(
                         modifier = Modifier
-                            .size(80.dp)
-                            .background(avatarColor, CircleShape)
+                            .size(100.dp) // Increased size slightly
                             .clickable { showAvatarDialog = true }
-                            .padding(8.dp),
-                        contentAlignment = Alignment.Center
                     ) {
-                         Icon(
-                            imageVector = Icons.Default.AccountCircle,
-                            contentDescription = "Profile Picture",
-                            modifier = Modifier.fillMaxSize(),
-                            tint = Color.White
-                        )
-                        // Overlay edit icon if default
-                        if (user?.avatarId == null) {
-                             Icon(
+                        if (avatarId != null && avatarId.contains("content://")) {
+                            // Render Image from Gallery URI
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(Uri.parse(avatarId))
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Profile Picture",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            // Render Colored Box (Default or Preset)
+                            val avatarColor = when (avatarId) {
+                                "avatar_1" -> Color(0xFF2196F3)
+                                "avatar_2" -> Color(0xFFE91E63)
+                                "avatar_3" -> Color(0xFF4CAF50)
+                                "avatar_4" -> Color(0xFFFF9800)
+                                else -> Color(0xFFE0E0E0)
+                            }
+                            
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(avatarColor, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AccountCircle,
+                                    contentDescription = "Profile Picture",
+                                    modifier = Modifier.fillMaxSize().padding(8.dp),
+                                    tint = Color.White
+                                )
+                            }
+                        }
+                        
+                        // Edit Badge
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .background(MaterialTheme.colorScheme.primary, CircleShape)
+                                .padding(6.dp)
+                        ) {
+                            Icon(
                                 imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit",
-                                modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                contentDescription = "Edit Avatar",
+                                modifier = Modifier.size(16.dp),
+                                tint = Color.White
                             )
                         }
                     }
@@ -270,7 +338,7 @@ fun AccountScreen(
                         )
                     }
                     
-                    // Added Wallet Balance Display
+                    // Wallet Balance Display
                     Spacer(modifier = Modifier.height(8.dp))
                     Surface(
                         color = MaterialTheme.colorScheme.primaryContainer,
@@ -347,7 +415,7 @@ fun AccountScreen(
                     iconColor = MaterialTheme.colorScheme.error,
                     onClick = {
                         userVM.logout()
-                        onLogout() // Call the callback
+                        onLogout()
                     }
                 )
             }
