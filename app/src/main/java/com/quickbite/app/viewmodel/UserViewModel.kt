@@ -1,3 +1,4 @@
+
 package com.quickbite.app.viewmodel
 
 import androidx.lifecycle.ViewModel
@@ -6,22 +7,24 @@ import com.quickbite.app.data.GiftCardRepository
 import com.quickbite.app.data.UserRepository
 import com.quickbite.app.model.GiftCard
 import com.quickbite.app.model.User
+import com.quickbite.app.util.SettingsManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
 
 class UserViewModel(
     private val repository: UserRepository,
-    private val giftCardRepository: GiftCardRepository
+    private val giftCardRepository: GiftCardRepository,
+    private val settingsManager: SettingsManager
 ) : ViewModel() {
 
     private val _users = MutableStateFlow<List<User>>(emptyList())
     private val _currentUser = MutableStateFlow<User?>(null)
-    private val _isLoggedIn = MutableStateFlow(false)
+    private val _isLoggedIn = MutableStateFlow(settingsManager.isLoggedIn())
     private val _darkModeEnabled = MutableStateFlow(false)
     
-    // Feedback message for UI
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> get() = _message
 
@@ -31,13 +34,17 @@ class UserViewModel(
 
     init {
         loadUsers()
+        viewModelScope.launch {
+            settingsManager.isLoggedInFlow.collect {
+                _isLoggedIn.value = it
+            }
+        }
     }
 
     private fun loadUsers() {
         viewModelScope.launch {
             val savedUsers = repository.getAllUsers()
             if (savedUsers.isEmpty()) {
-                // Pre-populate with a default user if the database is empty
                 val defaultUser = User("renu@gmail.com", "password", "Renu")
                 repository.insertUser(defaultUser)
                 _users.value = listOf(defaultUser)
@@ -49,7 +56,6 @@ class UserViewModel(
 
     fun setDarkMode(enabled: Boolean) {
         _darkModeEnabled.value = enabled
-        // Persist to database if user is logged in
         viewModelScope.launch {
             _currentUser.value?.let { user ->
                 val updatedUser = user.copy(isDarkMode = enabled)
@@ -68,7 +74,7 @@ class UserViewModel(
         if (existingUser == null) {
             val newUser = User(email, password, displayName)
             repository.insertUser(newUser)
-            loadUsers() // Refresh the user list
+            loadUsers()
             return true
         }
         return false
@@ -78,8 +84,7 @@ class UserViewModel(
         val existingUser = repository.getUserByEmail(email)
         if (existingUser != null && existingUser.password == password) {
             _currentUser.value = existingUser
-            _isLoggedIn.value = true
-            // Apply user's dark mode preference
+            settingsManager.setLoggedIn(true)
             _darkModeEnabled.value = existingUser.isDarkMode
             return true
         }
@@ -88,10 +93,7 @@ class UserViewModel(
 
     fun logout() {
         _currentUser.value = null
-        _isLoggedIn.value = false
-        // REMOVED: _darkModeEnabled.value = false 
-        // We keep the current theme to prevent the "white flash" during logout transition.
-        // The next user can change it if they want.
+        settingsManager.setLoggedIn(false)
     }
 
     fun updateUserProfile(
@@ -127,8 +129,6 @@ class UserViewModel(
         }
     }
 
-    // --- Gift Card Logic ---
-
     fun purchaseGiftCard(
         amount: Double,
         senderName: String,
@@ -137,7 +137,6 @@ class UserViewModel(
         customCode: String? = null
     ) {
         viewModelScope.launch {
-            // Use custom code if provided, otherwise generate one
             val code = customCode ?: UUID.randomUUID().toString().substring(0, 8).uppercase()
             val giftCard = GiftCard(
                 code = code,
@@ -157,7 +156,6 @@ class UserViewModel(
 
             if (giftCard != null) {
                 if (currentUser != null) {
-                    // Security Check: Verify recipient email
                     if (giftCard.recipientEmail.equals(currentUser.email, ignoreCase = true)) {
                         if (!giftCard.isRedeemed) {
                             val updatedGiftCard = giftCard.copy(
@@ -166,7 +164,6 @@ class UserViewModel(
                             )
                             giftCardRepository.updateGiftCard(updatedGiftCard)
                             
-                            // Update User Balance
                             val newBalance = currentUser.balance + giftCard.amount
                             val updatedUser = currentUser.copy(balance = newBalance)
                             repository.updateUser(updatedUser)

@@ -1,7 +1,6 @@
+
 package com.quickbite.app.viewmodel
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.quickbite.app.data.OrderRepository
@@ -9,12 +8,13 @@ import com.quickbite.app.data.repository.MenuRepository
 import com.quickbite.app.model.CartItem
 import com.quickbite.app.model.FoodItem
 import com.quickbite.app.model.Order
-import kotlinx.coroutines.delay
+import com.quickbite.app.util.SettingsManager
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class MenuViewModel(
-    private val orderRepository: OrderRepository
+    private val orderRepository: OrderRepository,
+    private val settingsManager: SettingsManager
 ) : ViewModel() {
 
     private val menuRepo = MenuRepository()
@@ -25,7 +25,7 @@ class MenuViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
-    private val _cartItems = MutableStateFlow<List<CartItem>>(emptyList())
+    private val _cartItems = MutableStateFlow<List<CartItem>>(settingsManager.getCart())
     val cartItems: StateFlow<List<CartItem>> = _cartItems
 
     private val _showOrderStatusDialog = MutableStateFlow(false)
@@ -44,7 +44,14 @@ class MenuViewModel(
         if (query.isBlank()) items else items.filter { it.name.contains(query, ignoreCase = true) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // ------------------ Load meals based on restaurant ------------------
+    init {
+        viewModelScope.launch {
+            _cartItems.collect { cartItems ->
+                settingsManager.saveCart(cartItems)
+            }
+        }
+    }
+
     fun loadMealsForRestaurant(restaurantName: String) {
         val firstChar = restaurantName.firstOrNull()?.lowercaseChar() ?: 'a'
 
@@ -59,7 +66,6 @@ class MenuViewModel(
         }
     }
 
-    // ------------------ Cart functions ------------------
     fun addToCart(item: FoodItem) {
         val current = _cartItems.value.toMutableList()
         val index = current.indexOfFirst { it.item.id == item.id }
@@ -72,19 +78,62 @@ class MenuViewModel(
         _cartItems.value = current
     }
 
-    fun increaseQuantity(item: FoodItem) { /* ... same as before ... */ }
-    fun decreaseQuantity(item: FoodItem) { /* ... same as before ... */ }
-    fun clearCart() { _cartItems.value = emptyList() }
+    fun increaseQuantity(item: FoodItem) {
+        val current = _cartItems.value.toMutableList()
+        val index = current.indexOfFirst { it.item.id == item.id }
+        if (index >= 0) {
+            current[index] = current[index].copy(quantity = current[index].quantity + 1)
+            _cartItems.value = current
+        }
+    }
 
-    // ------------------ Order functions ------------------
-    fun placeOrder() { /* ... same as before ... */ }
+    fun decreaseQuantity(item: FoodItem) {
+        val current = _cartItems.value.toMutableList()
+        val index = current.indexOfFirst { it.item.id == item.id }
+        if (index >= 0) {
+            val newQuantity = current[index].quantity - 1
+            if (newQuantity > 0) {
+                current[index] = current[index].copy(quantity = newQuantity)
+            } else {
+                current.removeAt(index)
+            }
+            _cartItems.value = current
+        }
+    }
 
-    // ------------------ Search functions ------------------
+    fun clearCart() {
+        _cartItems.value = emptyList()
+    }
+
+    fun placeOrder() {
+        viewModelScope.launch {
+            val currentCart = _cartItems.value
+            if (currentCart.isNotEmpty()) {
+                val order = Order(
+                    items = currentCart.map { "${it.item.name} (x${it.quantity})" },
+                    totalPrice = currentCart.sumOf { it.item.price * it.quantity },
+                    timestamp = System.currentTimeMillis(),
+                    status = "Pending"
+                )
+                orderRepository.insertOrder(order)
+                _orderStatusMessage.value = "Order placed successfully!"
+                _showOrderStatusDialog.value = true
+                clearCart()
+            } else {
+                _orderStatusMessage.value = "Cannot place an empty order."
+                _showOrderStatusDialog.value = true
+            }
+        }
+    }
+
     fun onSearchQueryChange(query: String) { _searchQuery.value = query }
-    fun onSearchTriggered(query: String) { /* ... same as before ... */ }
+    fun onSearchTriggered(query: String) { 
+        if (query.isNotEmpty()) {
+            _recentSearches.value = (_recentSearches.value + query).distinct().take(5)
+        }
+     }
     fun clearRecentSearches() { _recentSearches.value = emptyList() }
 
-    // ------------------ Recent Orders ------------------
     val recentOrders: StateFlow<List<Order>> = orderRepository.getRecentOrders()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 }
