@@ -25,7 +25,7 @@ class MenuViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
-    private val _cartItems = MutableStateFlow<List<CartItem>>(settingsManager.getCart())
+    private val _cartItems = MutableStateFlow(settingsManager.getCart())
     val cartItems: StateFlow<List<CartItem>> = _cartItems
 
     private val _showOrderStatusDialog = MutableStateFlow(false)
@@ -37,7 +37,7 @@ class MenuViewModel(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
 
-    private val _recentSearches = MutableStateFlow<List<String>>(emptyList())
+    private val _recentSearches = MutableStateFlow(settingsManager.getRecentSearches())
     val recentSearches: StateFlow<List<String>> = _recentSearches
 
     val filteredFoodItems: StateFlow<List<FoodItem>> = combine(_foodItems, _searchQuery) { items, query ->
@@ -46,58 +46,57 @@ class MenuViewModel(
 
     init {
         viewModelScope.launch {
-            _cartItems.collect { cartItems ->
-                settingsManager.saveCart(cartItems)
-            }
+            _cartItems.collect { items -> settingsManager.saveCart(items) }
+        }
+        viewModelScope.launch {
+            _recentSearches.collect { searches -> settingsManager.saveRecentSearches(searches) }
         }
     }
 
     fun loadMealsForRestaurant(restaurantName: String) {
         val firstChar = restaurantName.firstOrNull()?.lowercaseChar() ?: 'a'
-
         viewModelScope.launch {
             try {
-                val meals = menuRepo.getMealsByFirstLetter(firstChar)
-                _foodItems.value = meals
+                _foodItems.value = menuRepo.getMealsByFirstLetter(firstChar)
             } catch (e: Exception) {
-                e.printStackTrace()
                 _error.value = e.message ?: "Failed to load meals"
             }
         }
     }
 
     fun addToCart(item: FoodItem) {
-        val current = _cartItems.value.toMutableList()
-        val index = current.indexOfFirst { it.item.id == item.id }
-
-        if (index >= 0) {
-            current[index] = current[index].copy(quantity = current[index].quantity + 1)
-        } else {
-            current.add(CartItem(item, 1))
+        _cartItems.update { currentCart ->
+            val existingItem = currentCart.find { it.item.id == item.id }
+            if (existingItem != null) {
+                currentCart.map { if (it.item.id == item.id) it.copy(quantity = it.quantity + 1) else it }
+            } else {
+                currentCart + CartItem(item, 1)
+            }
         }
-        _cartItems.value = current
     }
 
     fun increaseQuantity(item: FoodItem) {
-        val current = _cartItems.value.toMutableList()
-        val index = current.indexOfFirst { it.item.id == item.id }
-        if (index >= 0) {
-            current[index] = current[index].copy(quantity = current[index].quantity + 1)
-            _cartItems.value = current
+        _cartItems.update { currentCart ->
+            currentCart.map {
+                if (it.item.id == item.id) it.copy(quantity = it.quantity + 1) else it
+            }
         }
     }
 
     fun decreaseQuantity(item: FoodItem) {
-        val current = _cartItems.value.toMutableList()
-        val index = current.indexOfFirst { it.item.id == item.id }
-        if (index >= 0) {
-            val newQuantity = current[index].quantity - 1
-            if (newQuantity > 0) {
-                current[index] = current[index].copy(quantity = newQuantity)
+        _cartItems.update { currentCart ->
+            val existingItem = currentCart.find { it.item.id == item.id }
+            if (existingItem != null) {
+                if (existingItem.quantity > 1) {
+                    currentCart.map { 
+                        if (it.item.id == item.id) it.copy(quantity = it.quantity - 1) else it 
+                    }
+                } else {
+                    currentCart.filterNot { it.item.id == item.id }
+                }
             } else {
-                current.removeAt(index)
+                currentCart
             }
-            _cartItems.value = current
         }
     }
 
@@ -115,7 +114,7 @@ class MenuViewModel(
                     timestamp = System.currentTimeMillis(),
                     status = "Pending"
                 )
-                orderRepository.insertOrder(order)
+                orderRepository.saveOrder(order)
                 _orderStatusMessage.value = "Order placed successfully!"
                 _showOrderStatusDialog.value = true
                 clearCart()
@@ -126,13 +125,20 @@ class MenuViewModel(
         }
     }
 
-    fun onSearchQueryChange(query: String) { _searchQuery.value = query }
-    fun onSearchTriggered(query: String) { 
-        if (query.isNotEmpty()) {
-            _recentSearches.value = (_recentSearches.value + query).distinct().take(5)
+    fun onSearchQueryChange(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun onSearchTriggered(query: String) {
+        if (query.isNotBlank()) {
+            val updatedSearches = (_recentSearches.value + query).distinct().take(5)
+            _recentSearches.value = updatedSearches
         }
-     }
-    fun clearRecentSearches() { _recentSearches.value = emptyList() }
+    }
+
+    fun clearRecentSearches() {
+        _recentSearches.value = emptyList()
+    }
 
     val recentOrders: StateFlow<List<Order>> = orderRepository.getRecentOrders()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())

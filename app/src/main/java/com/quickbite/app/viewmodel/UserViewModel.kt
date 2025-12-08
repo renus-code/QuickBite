@@ -10,7 +10,6 @@ import com.quickbite.app.model.User
 import com.quickbite.app.util.SettingsManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -22,7 +21,7 @@ class UserViewModel(
 
     private val _users = MutableStateFlow<List<User>>(emptyList())
     private val _currentUser = MutableStateFlow<User?>(null)
-    private val _isLoggedIn = MutableStateFlow(settingsManager.isLoggedIn())
+    private val _isLoggedIn: MutableStateFlow<Boolean> = MutableStateFlow(settingsManager.isLoggedIn())
     private val _darkModeEnabled = MutableStateFlow(false)
     
     private val _message = MutableStateFlow<String?>(null)
