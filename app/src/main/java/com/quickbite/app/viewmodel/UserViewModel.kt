@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.quickbite.app.data.GiftCardRepository
 import com.quickbite.app.data.UserRepository
+import com.quickbite.app.model.Address
 import com.quickbite.app.model.GiftCard
 import com.quickbite.app.model.User
+import com.quickbite.app.util.SettingsManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -13,43 +15,38 @@ import java.util.UUID
 
 class UserViewModel(
     private val repository: UserRepository,
-    private val giftCardRepository: GiftCardRepository
+    private val giftCardRepository: GiftCardRepository,
+    private val settingsManager: SettingsManager
 ) : ViewModel() {
 
-    private val _users = MutableStateFlow<List<User>>(emptyList())
     private val _currentUser = MutableStateFlow<User?>(null)
-    private val _isLoggedIn = MutableStateFlow(false)
-    private val _darkModeEnabled = MutableStateFlow(false)
-    
-    // Feedback message for UI
-    private val _message = MutableStateFlow<String?>(null)
-    val message: StateFlow<String?> get() = _message
+    val user: StateFlow<User?> = _currentUser
 
-    val user: StateFlow<User?> get() = _currentUser
-    val isLoggedIn: StateFlow<Boolean> get() = _isLoggedIn
-    val darkModeEnabled: StateFlow<Boolean> get() = _darkModeEnabled
+    private val _isLoggedIn = MutableStateFlow(false)
+    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn
+
+    private val _darkModeEnabled = MutableStateFlow(false)
+    val darkModeEnabled: StateFlow<Boolean> = _darkModeEnabled
+
+    private val _message = MutableStateFlow<String?>(null)
+    val message: StateFlow<String?> = _message
 
     init {
-        loadUsers()
-    }
-
-    private fun loadUsers() {
-        viewModelScope.launch {
-            val savedUsers = repository.getAllUsers()
-            if (savedUsers.isEmpty()) {
-                // Pre-populate with a default user if the database is empty
-                val defaultUser = User("renu@gmail.com", "password", "Renu")
-                repository.insertUser(defaultUser)
-                _users.value = listOf(defaultUser)
-            } else {
-                _users.value = savedUsers
+        val loggedInUserEmail = settingsManager.getLoggedInUser()
+        if (loggedInUserEmail != null) {
+            viewModelScope.launch {
+                val user = repository.getUserByEmail(loggedInUserEmail)
+                if (user != null) {
+                    _currentUser.value = user
+                    _isLoggedIn.value = true
+                    _darkModeEnabled.value = user.isDarkMode
+                }
             }
         }
     }
 
     fun setDarkMode(enabled: Boolean) {
         _darkModeEnabled.value = enabled
-        // Persist to database if user is logged in
         viewModelScope.launch {
             _currentUser.value?.let { user ->
                 val updatedUser = user.copy(isDarkMode = enabled)
@@ -64,23 +61,21 @@ class UserViewModel(
     }
 
     suspend fun signup(email: String, password: String, displayName: String): Boolean {
-        val existingUser = repository.getUserByEmail(email)
-        if (existingUser == null) {
+        if (repository.getUserByEmail(email) == null) {
             val newUser = User(email, password, displayName)
             repository.insertUser(newUser)
-            loadUsers() // Refresh the user list
             return true
         }
         return false
     }
 
     suspend fun login(email: String, password: String): Boolean {
-        val existingUser = repository.getUserByEmail(email)
-        if (existingUser != null && existingUser.password == password) {
-            _currentUser.value = existingUser
+        val user = repository.getUserByEmail(email)
+        if (user != null && user.password == password) {
+            _currentUser.value = user
             _isLoggedIn.value = true
-            // Apply user's dark mode preference
-            _darkModeEnabled.value = existingUser.isDarkMode
+            _darkModeEnabled.value = user.isDarkMode
+            settingsManager.saveLoggedInUser(email)
             return true
         }
         return false
@@ -89,25 +84,22 @@ class UserViewModel(
     fun logout() {
         _currentUser.value = null
         _isLoggedIn.value = false
-        // REMOVED: _darkModeEnabled.value = false 
-        // We keep the current theme to prevent the "white flash" during logout transition.
-        // The next user can change it if they want.
+        settingsManager.saveLoggedInUser(null)
     }
 
     fun updateUserProfile(
+        displayName: String? = null,
         phoneNumber: String? = null,
-        address: String? = null,
-        paymentMethod: String? = null,
+        addresses: List<Address>? = null,
         avatarId: String? = null
     ) {
         viewModelScope.launch {
-            val currentUser = _currentUser.value
-            if (currentUser != null) {
-                val updatedUser = currentUser.copy(
-                    phoneNumber = phoneNumber ?: currentUser.phoneNumber,
-                    address = address ?: currentUser.address,
-                    paymentMethod = paymentMethod ?: currentUser.paymentMethod,
-                    avatarId = avatarId ?: currentUser.avatarId
+            _currentUser.value?.let {
+                val updatedUser = it.copy(
+                    displayName = displayName ?: it.displayName,
+                    phoneNumber = phoneNumber ?: it.phoneNumber,
+                    addresses = addresses ?: it.addresses,
+                    avatarId = avatarId ?: it.avatarId
                 )
                 repository.updateUser(updatedUser)
                 _currentUser.value = updatedUser
@@ -116,18 +108,14 @@ class UserViewModel(
         }
     }
 
-    fun deleteAccount() {
+    fun addAddress(address: Address) {
         viewModelScope.launch {
-            val currentUser = _currentUser.value
-            if (currentUser != null) {
-                repository.deleteUser(currentUser)
-                logout()
-                _message.value = "Account Deleted"
+            _currentUser.value?.let {
+                val updatedAddresses = it.addresses + address
+                updateUserProfile(addresses = updatedAddresses)
             }
         }
     }
-
-    // --- Gift Card Logic ---
 
     fun purchaseGiftCard(
         amount: Double,
@@ -137,7 +125,6 @@ class UserViewModel(
         customCode: String? = null
     ) {
         viewModelScope.launch {
-            // Use custom code if provided, otherwise generate one
             val code = customCode ?: UUID.randomUUID().toString().substring(0, 8).uppercase()
             val giftCard = GiftCard(
                 code = code,
@@ -157,7 +144,6 @@ class UserViewModel(
 
             if (giftCard != null) {
                 if (currentUser != null) {
-                    // Security Check: Verify recipient email
                     if (giftCard.recipientEmail.equals(currentUser.email, ignoreCase = true)) {
                         if (!giftCard.isRedeemed) {
                             val updatedGiftCard = giftCard.copy(
@@ -166,7 +152,6 @@ class UserViewModel(
                             )
                             giftCardRepository.updateGiftCard(updatedGiftCard)
                             
-                            // Update User Balance
                             val newBalance = currentUser.balance + giftCard.amount
                             val updatedUser = currentUser.copy(balance = newBalance)
                             repository.updateUser(updatedUser)
@@ -185,6 +170,16 @@ class UserViewModel(
                 }
             } else {
                 _message.value = "Invalid gift card code."
+            }
+        }
+    }
+
+    fun deleteAccount() {
+        viewModelScope.launch {
+            _currentUser.value?.let {
+                repository.deleteUser(it)
+                logout()
+                _message.value = "Account Deleted"
             }
         }
     }

@@ -1,3 +1,4 @@
+
 package com.quickbite.app
 
 import android.os.Bundle
@@ -14,39 +15,33 @@ import com.quickbite.app.data.AppDatabase
 import com.quickbite.app.data.GiftCardRepository
 import com.quickbite.app.data.OrderRepository
 import com.quickbite.app.data.UserRepository
-import com.quickbite.app.navigation.BottomNavGraph
 import com.quickbite.app.navigation.NavGraph
 import com.quickbite.app.ui.theme.QuickBiteTheme
+import com.quickbite.app.util.SettingsManager
 import com.quickbite.app.viewmodel.MenuViewModel
 import com.quickbite.app.viewmodel.MenuViewModelFactory
 import com.quickbite.app.viewmodel.UserViewModel
 import com.quickbite.app.viewmodel.UserViewModelFactory
 import com.quickbite.app.viewmodel.RestaurantViewModel
 
-
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            // Database and Repositories
+            val settingsManager = SettingsManager(applicationContext)
             val database = AppDatabase.getDatabase(applicationContext)
             val userRepository = UserRepository(database.userDao())
             val giftCardRepository = GiftCardRepository(database.giftCardDao())
             val orderRepository = OrderRepository(database.orderDao())
 
-            // ViewModel Factories
-            val userViewModelFactory = UserViewModelFactory(userRepository, giftCardRepository)
-            val menuViewModelFactory = MenuViewModelFactory(orderRepository)
+            val userViewModelFactory = UserViewModelFactory(userRepository, giftCardRepository, settingsManager)
+            val menuViewModelFactory = MenuViewModelFactory(orderRepository, settingsManager)
 
-            // ViewModels
             val userVM: UserViewModel = ViewModelProvider(this, userViewModelFactory)
                 .get(UserViewModel::class.java)
             val menuVM: MenuViewModel = ViewModelProvider(this, menuViewModelFactory)
                 .get(MenuViewModel::class.java)
 
-
-            // RestaurantViewModel has a default constructor, no factory needed
             val restaurantVM: RestaurantViewModel = viewModel()
 
             val useDarkTheme by userVM.darkModeEnabled.collectAsState()
@@ -64,5 +59,3 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
-
