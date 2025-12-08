@@ -13,5 +13,7 @@ data class Order(
     val items: List<String>, // Storing item names as a list
     val totalPrice: Double,
     val timestamp: Long,
-    var status: String
+    var status: String,
+    val shippingAddress: String,
+    val paymentMethod: String
 )

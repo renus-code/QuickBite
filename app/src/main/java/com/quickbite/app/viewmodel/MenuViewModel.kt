@@ -1,16 +1,20 @@
-
 package com.quickbite.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.quickbite.app.data.OrderRepository
 import com.quickbite.app.data.repository.MenuRepository
+import com.quickbite.app.model.Address
 import com.quickbite.app.model.CartItem
 import com.quickbite.app.model.FoodItem
 import com.quickbite.app.model.Order
 import com.quickbite.app.util.SettingsManager
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.Calendar
+
+enum class OrderFilter { ALL, WEEK, MONTH }
 
 class MenuViewModel(
     private val orderRepository: OrderRepository,
@@ -28,11 +32,8 @@ class MenuViewModel(
     private val _cartItems = MutableStateFlow(settingsManager.getCart())
     val cartItems: StateFlow<List<CartItem>> = _cartItems
 
-    private val _showOrderStatusDialog = MutableStateFlow(false)
-    val showOrderStatusDialog: StateFlow<Boolean> = _showOrderStatusDialog
-
-    private val _orderStatusMessage = MutableStateFlow("")
-    val orderStatusMessage: StateFlow<String> = _orderStatusMessage
+    private val _orderStatusMessage = MutableStateFlow<String?>(null)
+    val orderStatusMessage: StateFlow<String?> = _orderStatusMessage
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
@@ -40,17 +41,40 @@ class MenuViewModel(
     private val _recentSearches = MutableStateFlow(settingsManager.getRecentSearches())
     val recentSearches: StateFlow<List<String>> = _recentSearches
 
-    val filteredFoodItems: StateFlow<List<FoodItem>> = combine(_foodItems, _searchQuery) { items, query ->
-        if (query.isBlank()) items else items.filter { it.name.contains(query, ignoreCase = true) }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    private val _orderFilter = MutableStateFlow(OrderFilter.ALL)
+    val orderFilter: StateFlow<OrderFilter> = _orderFilter
 
-    init {
-        viewModelScope.launch {
-            _cartItems.collect { items -> settingsManager.saveCart(items) }
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val orders: StateFlow<List<Order>> = _orderFilter.flatMapLatest { filter ->
+        when (filter) {
+            OrderFilter.ALL -> orderRepository.getAllOrders()
+            OrderFilter.WEEK -> {
+                val cal = Calendar.getInstance()
+                cal.add(Calendar.DAY_OF_YEAR, -7)
+                orderRepository.getOrdersSince(cal.timeInMillis)
+            }
+            OrderFilter.MONTH -> {
+                val cal = Calendar.getInstance()
+                cal.add(Calendar.MONTH, -1)
+                orderRepository.getOrdersSince(cal.timeInMillis)
+            }
         }
-        viewModelScope.launch {
-            _recentSearches.collect { searches -> settingsManager.saveRecentSearches(searches) }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList<Order>())
+
+    val filteredFoodItems: StateFlow<List<FoodItem>> = combine(foodItems, searchQuery) { items, query ->
+        if (query.isBlank()) {
+            items
+        } else {
+            items.filter { it.name.contains(query, ignoreCase = true) }
         }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList<FoodItem>())
+
+    fun setOrderFilter(filter: OrderFilter) {
+        _orderFilter.value = filter
+    }
+
+    fun getOrderById(id: Int): Flow<Order> {
+        return orderRepository.getOrderById(id)
     }
 
     fun loadMealsForRestaurant(restaurantName: String) {
@@ -104,24 +128,41 @@ class MenuViewModel(
         _cartItems.value = emptyList()
     }
 
-    fun placeOrder() {
+    fun placeOrder(address: Address, paymentMethod: String) {
         viewModelScope.launch {
             val currentCart = _cartItems.value
             if (currentCart.isNotEmpty()) {
-                val order = Order(
+                val newOrder = Order(
                     items = currentCart.map { "${it.item.name} (x${it.quantity})" },
                     totalPrice = currentCart.sumOf { it.item.price * it.quantity },
                     timestamp = System.currentTimeMillis(),
-                    status = "Pending"
+                    status = "Pending",
+                    shippingAddress = address.toDisplayString(),
+                    paymentMethod = paymentMethod
                 )
-                orderRepository.saveOrder(order)
-                _orderStatusMessage.value = "Order placed successfully!"
-                _showOrderStatusDialog.value = true
+                val orderId = orderRepository.saveOrder(newOrder)
                 clearCart()
-            } else {
-                _orderStatusMessage.value = "Cannot place an empty order."
-                _showOrderStatusDialog.value = true
+                
+                // Start simulating the order status updates
+                simulateOrderStatus(orderId, newOrder)
             }
+        }
+    }
+    
+    private fun simulateOrderStatus(orderId: Long, order: Order) {
+        viewModelScope.launch {
+            _orderStatusMessage.value = "Order placed successfully!"
+            delay(5000) 
+            orderRepository.updateOrder(order.copy(orderId = orderId.toInt(), status = "Processing"))
+            _orderStatusMessage.value = "Your order is being processed."
+            delay(10000) 
+            orderRepository.updateOrder(order.copy(orderId = orderId.toInt(), status = "Out for Delivery"))
+            _orderStatusMessage.value = "Your order is out for delivery!"
+            delay(15000) 
+            orderRepository.updateOrder(order.copy(orderId = orderId.toInt(), status = "Delivered"))
+            _orderStatusMessage.value = "Your order has been delivered!"
+            delay(5000)
+            _orderStatusMessage.value = null // Clear message
         }
     }
 
@@ -139,7 +180,4 @@ class MenuViewModel(
     fun clearRecentSearches() {
         _recentSearches.value = emptyList()
     }
-
-    val recentOrders: StateFlow<List<Order>> = orderRepository.getRecentOrders()
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 }

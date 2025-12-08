@@ -9,6 +9,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.quickbite.app.components.BottomNavigationBar
 import com.quickbite.app.navigation.BottomNavGraph
 import com.quickbite.app.navigation.Route
@@ -44,7 +45,6 @@ fun HomeScreen(
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedTab) {
                 Route.Restaurants.route -> {
-                    // Reuse existing logic for Restaurants
                     BottomNavGraph(
                         navController = restaurantNavController,
                         userVM = userVM,
@@ -56,20 +56,15 @@ fun HomeScreen(
                                     inclusive = true
                                 }
                             }
-                        },
-                        modifier = Modifier
+                        }
                     )
                 }
 
                 Route.GiftCards.route -> {
-                    // Payment tab NavHost
                     NavHost(
                         navController = giftCardsNavController,
-                        startDestination = "payments_home"
+                        startDestination = "gift_card_landing"
                     ) {
-                        composable("payments_home") {
-                            PaymentsScreen(navController = giftCardsNavController, userVM = userVM)
-                        }
                         composable("gift_card_landing") {
                             GiftCardLandingScreen(navController = giftCardsNavController)
                         }
@@ -79,18 +74,43 @@ fun HomeScreen(
                         composable("redeemGiftCard") {
                             RedeemGiftCardScreen(navController = giftCardsNavController, userVM = userVM)
                         }
-                        composable("activity") {
-                             ActivityScreen(menuVM = menuVM)
-                        }
                     }
                 }
 
-                Route.Cart.route -> CartScreen(menuVM, cartNavController, isBottomNav = true)
+                Route.Cart.route -> {
+                    NavHost(
+                        navController = cartNavController,
+                        startDestination = "cart_home"
+                    ) {
+                        composable("cart_home") {
+                            CartScreen(menuVM = menuVM, navController = cartNavController, isBottomNav = true)
+                        }
+                        composable("checkout") {
+                            CheckoutScreen(userVM = userVM, menuVM = menuVM, navController = cartNavController)
+                        }
+                    }
+                }
                 
-                Route.Activity.route -> ActivityScreen(menuVM)
+                Route.Activity.route -> {
+                    val activityNavController = rememberNavController()
+                    NavHost(
+                        navController = activityNavController,
+                        startDestination = "activity_home"
+                    ) {
+                        composable("activity_home") {
+                            ActivityScreen(menuVM = menuVM, navController = activityNavController)
+                        }
+                        composable(
+                            "order_detail/{orderId}",
+                            arguments = listOf(navArgument("orderId") { type = androidx.navigation.NavType.IntType })
+                        ) { backStackEntry ->
+                            val orderId = backStackEntry.arguments?.getInt("orderId") ?: 0
+                            OrderDetailScreen(orderId = orderId, menuVM = menuVM, navController = activityNavController)
+                        }
+                    }
+                }
                 
                 Route.Account.route -> {
-                    // FIX: Use a NavHost for Account tab to handle navigation to Settings
                     NavHost(
                         navController = accountNavController,
                         startDestination = "account_home"
@@ -108,6 +128,12 @@ fun HomeScreen(
                         }
                         composable("settings") {
                             SettingsScreen(navController = accountNavController, userVM = userVM)
+                        }
+                        composable("address_book") {
+                            AddressBookScreen(navController = accountNavController, userVM = userVM)
+                        }
+                        composable("add_address") {
+                            AddAddressScreen(navController = accountNavController, userVM = userVM)
                         }
                     }
                 }

@@ -1,10 +1,10 @@
-
 package com.quickbite.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.quickbite.app.data.GiftCardRepository
 import com.quickbite.app.data.UserRepository
+import com.quickbite.app.model.Address
 import com.quickbite.app.model.GiftCard
 import com.quickbite.app.model.User
 import com.quickbite.app.util.SettingsManager
@@ -19,36 +19,28 @@ class UserViewModel(
     private val settingsManager: SettingsManager
 ) : ViewModel() {
 
-    private val _users = MutableStateFlow<List<User>>(emptyList())
     private val _currentUser = MutableStateFlow<User?>(null)
-    private val _isLoggedIn: MutableStateFlow<Boolean> = MutableStateFlow(settingsManager.isLoggedIn())
-    private val _darkModeEnabled = MutableStateFlow(false)
-    
-    private val _message = MutableStateFlow<String?>(null)
-    val message: StateFlow<String?> get() = _message
+    val user: StateFlow<User?> = _currentUser
 
-    val user: StateFlow<User?> get() = _currentUser
-    val isLoggedIn: StateFlow<Boolean> get() = _isLoggedIn
-    val darkModeEnabled: StateFlow<Boolean> get() = _darkModeEnabled
+    private val _isLoggedIn = MutableStateFlow(false)
+    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn
+
+    private val _darkModeEnabled = MutableStateFlow(false)
+    val darkModeEnabled: StateFlow<Boolean> = _darkModeEnabled
+
+    private val _message = MutableStateFlow<String?>(null)
+    val message: StateFlow<String?> = _message
 
     init {
-        loadUsers()
-        viewModelScope.launch {
-            settingsManager.isLoggedInFlow.collect {
-                _isLoggedIn.value = it
-            }
-        }
-    }
-
-    private fun loadUsers() {
-        viewModelScope.launch {
-            val savedUsers = repository.getAllUsers()
-            if (savedUsers.isEmpty()) {
-                val defaultUser = User("renu@gmail.com", "password", "Renu")
-                repository.insertUser(defaultUser)
-                _users.value = listOf(defaultUser)
-            } else {
-                _users.value = savedUsers
+        val loggedInUserEmail = settingsManager.getLoggedInUser()
+        if (loggedInUserEmail != null) {
+            viewModelScope.launch {
+                val user = repository.getUserByEmail(loggedInUserEmail)
+                if (user != null) {
+                    _currentUser.value = user
+                    _isLoggedIn.value = true
+                    _darkModeEnabled.value = user.isDarkMode
+                }
             }
         }
     }
@@ -69,22 +61,21 @@ class UserViewModel(
     }
 
     suspend fun signup(email: String, password: String, displayName: String): Boolean {
-        val existingUser = repository.getUserByEmail(email)
-        if (existingUser == null) {
+        if (repository.getUserByEmail(email) == null) {
             val newUser = User(email, password, displayName)
             repository.insertUser(newUser)
-            loadUsers()
             return true
         }
         return false
     }
 
     suspend fun login(email: String, password: String): Boolean {
-        val existingUser = repository.getUserByEmail(email)
-        if (existingUser != null && existingUser.password == password) {
-            _currentUser.value = existingUser
-            settingsManager.setLoggedIn(true)
-            _darkModeEnabled.value = existingUser.isDarkMode
+        val user = repository.getUserByEmail(email)
+        if (user != null && user.password == password) {
+            _currentUser.value = user
+            _isLoggedIn.value = true
+            _darkModeEnabled.value = user.isDarkMode
+            settingsManager.saveLoggedInUser(email)
             return true
         }
         return false
@@ -92,23 +83,23 @@ class UserViewModel(
 
     fun logout() {
         _currentUser.value = null
-        settingsManager.setLoggedIn(false)
+        _isLoggedIn.value = false
+        settingsManager.saveLoggedInUser(null)
     }
 
     fun updateUserProfile(
+        displayName: String? = null,
         phoneNumber: String? = null,
-        address: String? = null,
-        paymentMethod: String? = null,
+        addresses: List<Address>? = null,
         avatarId: String? = null
     ) {
         viewModelScope.launch {
-            val currentUser = _currentUser.value
-            if (currentUser != null) {
-                val updatedUser = currentUser.copy(
-                    phoneNumber = phoneNumber ?: currentUser.phoneNumber,
-                    address = address ?: currentUser.address,
-                    paymentMethod = paymentMethod ?: currentUser.paymentMethod,
-                    avatarId = avatarId ?: currentUser.avatarId
+            _currentUser.value?.let {
+                val updatedUser = it.copy(
+                    displayName = displayName ?: it.displayName,
+                    phoneNumber = phoneNumber ?: it.phoneNumber,
+                    addresses = addresses ?: it.addresses,
+                    avatarId = avatarId ?: it.avatarId
                 )
                 repository.updateUser(updatedUser)
                 _currentUser.value = updatedUser
@@ -117,13 +108,11 @@ class UserViewModel(
         }
     }
 
-    fun deleteAccount() {
+    fun addAddress(address: Address) {
         viewModelScope.launch {
-            val currentUser = _currentUser.value
-            if (currentUser != null) {
-                repository.deleteUser(currentUser)
-                logout()
-                _message.value = "Account Deleted"
+            _currentUser.value?.let {
+                val updatedAddresses = it.addresses + address
+                updateUserProfile(addresses = updatedAddresses)
             }
         }
     }
@@ -181,6 +170,16 @@ class UserViewModel(
                 }
             } else {
                 _message.value = "Invalid gift card code."
+            }
+        }
+    }
+
+    fun deleteAccount() {
+        viewModelScope.launch {
+            _currentUser.value?.let {
+                repository.deleteUser(it)
+                logout()
+                _message.value = "Account Deleted"
             }
         }
     }

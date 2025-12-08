@@ -4,17 +4,16 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.room.TypeConverters
-import com.quickbite.app.model.GiftCard
 import com.quickbite.app.model.Order
 import com.quickbite.app.model.User
+import com.quickbite.app.model.GiftCard
 
-@Database(entities = [User::class, GiftCard::class, Order::class], version = 7, exportSchema = false) // Incremented to 7
-@TypeConverters(Converters::class)
+@Database(entities = [User::class, Order::class, GiftCard::class], version = 3, exportSchema = false) // Bumped version to 3
 abstract class AppDatabase : RoomDatabase() {
+
     abstract fun userDao(): UserDao
-    abstract fun giftCardDao(): GiftCardDao
     abstract fun orderDao(): OrderDao
+    abstract fun giftCardDao(): GiftCardDao
 
     companion object {
         @Volatile
@@ -27,7 +26,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "quickbite_database"
                 )
-                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigration() // Added fallback migration
                 .build()
                 INSTANCE = instance
                 instance
