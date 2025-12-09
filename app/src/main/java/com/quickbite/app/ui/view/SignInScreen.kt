@@ -32,7 +32,6 @@ fun SignInScreen(navController: NavController, userVM: UserViewModel) {
 
     Scaffold { innerPadding ->
         Box(modifier = Modifier.fillMaxSize()) {
-            // Background Image
             Image(
                 painter = painterResource(id = R.drawable.auth_background),
                 contentDescription = null,
@@ -40,14 +39,12 @@ fun SignInScreen(navController: NavController, userVM: UserViewModel) {
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Dark Overlay
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.6f))
             )
 
-            // Safe Title Header
             Row(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -62,7 +59,6 @@ fun SignInScreen(navController: NavController, userVM: UserViewModel) {
                 )
             }
 
-            // Content
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -86,8 +82,14 @@ fun SignInScreen(navController: NavController, userVM: UserViewModel) {
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White.copy(alpha = 0.9f),
-                        unfocusedContainerColor = Color.White.copy(alpha = 0.9f)
+                        focusedBorderColor = Color.White,
+                        focusedLabelColor = Color.White,
+                        unfocusedLabelColor = Color.White.copy(alpha = 0.7f),
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedContainerColor = Color.White.copy(alpha = 0.1f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.1f),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
                     )
                 )
 
@@ -100,8 +102,14 @@ fun SignInScreen(navController: NavController, userVM: UserViewModel) {
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White.copy(alpha = 0.9f),
-                        unfocusedContainerColor = Color.White.copy(alpha = 0.9f)
+                        focusedBorderColor = Color.White,
+                        focusedLabelColor = Color.White,
+                        unfocusedLabelColor = Color.White.copy(alpha = 0.7f),
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedContainerColor = Color.White.copy(alpha = 0.1f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.1f),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
                     )
                 )
 

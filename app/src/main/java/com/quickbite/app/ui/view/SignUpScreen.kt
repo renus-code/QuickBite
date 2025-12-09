@@ -27,13 +27,13 @@ fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
     var displayName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
 
     val scope = rememberCoroutineScope()
 
     Scaffold { innerPadding ->
         Box(modifier = Modifier.fillMaxSize()) {
-            // Background Image
             Image(
                 painter = painterResource(id = R.drawable.auth_background),
                 contentDescription = null,
@@ -41,14 +41,12 @@ fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Dark Overlay
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.6f))
             )
 
-            // SAFE TITLE HEADER
             Row(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -63,7 +61,6 @@ fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
                 )
             }
 
-            // Content
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -86,8 +83,14 @@ fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
                     label = { Text("Display Name") },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White.copy(alpha = 0.9f),
-                        unfocusedContainerColor = Color.White.copy(alpha = 0.9f)
+                        focusedBorderColor = Color.White,
+                        focusedLabelColor = Color.White,
+                        unfocusedLabelColor = Color.White.copy(alpha = 0.7f),
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedContainerColor = Color.White.copy(alpha = 0.1f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.1f),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
                     )
                 )
 
@@ -100,11 +103,37 @@ fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White.copy(alpha = 0.9f),
-                        unfocusedContainerColor = Color.White.copy(alpha = 0.9f)
+                        focusedBorderColor = Color.White,
+                        focusedLabelColor = Color.White,
+                        unfocusedLabelColor = Color.White.copy(alpha = 0.7f),
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedContainerColor = Color.White.copy(alpha = 0.1f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.1f),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
                     )
                 )
 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = phoneNumber,
+                    onValueChange = { phoneNumber = it; errorMessage = "" },
+                    label = { Text("Phone Number") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.White,
+                        focusedLabelColor = Color.White,
+                        unfocusedLabelColor = Color.White.copy(alpha = 0.7f),
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedContainerColor = Color.White.copy(alpha = 0.1f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.1f),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    )
+                )
+                
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
@@ -115,8 +144,14 @@ fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White.copy(alpha = 0.9f),
-                        unfocusedContainerColor = Color.White.copy(alpha = 0.9f)
+                        focusedBorderColor = Color.White,
+                        focusedLabelColor = Color.White,
+                        unfocusedLabelColor = Color.White.copy(alpha = 0.7f),
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedContainerColor = Color.White.copy(alpha = 0.1f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.1f),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
                     )
                 )
 
@@ -137,7 +172,7 @@ fun SignUpScreen(navController: NavController, userVM: UserViewModel) {
                             errorMessage = "Password too short"
                         } else {
                             scope.launch {
-                                val success = userVM.signup(email, password, displayName)
+                                val success = userVM.signup(email, password, displayName, phoneNumber)
                                 if (success) {
                                     navController.navigate("signin") {
                                         popUpTo(0) { inclusive = true }

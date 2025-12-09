@@ -60,9 +60,9 @@ class UserViewModel(
         _message.value = null
     }
 
-    suspend fun signup(email: String, password: String, displayName: String): Boolean {
+    suspend fun signup(email: String, password: String, displayName: String, phoneNumber: String): Boolean {
         if (repository.getUserByEmail(email) == null) {
-            val newUser = User(email, password, displayName)
+            val newUser = User(email, password, displayName, phoneNumber)
             repository.insertUser(newUser)
             return true
         }
@@ -91,6 +91,7 @@ class UserViewModel(
         displayName: String? = null,
         phoneNumber: String? = null,
         addresses: List<Address>? = null,
+        paymentMethod: String? = null,
         avatarId: String? = null
     ) {
         viewModelScope.launch {
@@ -99,6 +100,7 @@ class UserViewModel(
                     displayName = displayName ?: it.displayName,
                     phoneNumber = phoneNumber ?: it.phoneNumber,
                     addresses = addresses ?: it.addresses,
+                    paymentMethod = paymentMethod ?: it.paymentMethod,
                     avatarId = avatarId ?: it.avatarId
                 )
                 repository.updateUser(updatedUser)
