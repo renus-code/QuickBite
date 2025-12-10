@@ -40,7 +40,7 @@ fun HomeScreen(
                 onTabSelected = { selectedTab = it }
             )
         }
-    ) { innerPadding -> 
+    ) { innerPadding ->
 
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedTab) {
@@ -69,10 +69,16 @@ fun HomeScreen(
                             GiftCardLandingScreen(navController = giftCardsNavController)
                         }
                         composable("purchaseGiftCard") {
-                            PurchaseGiftCardScreen(navController = giftCardsNavController, userVM = userVM)
+                            PurchaseGiftCardScreen(
+                                navController = giftCardsNavController,
+                                userVM = userVM
+                            )
                         }
                         composable("redeemGiftCard") {
-                            RedeemGiftCardScreen(navController = giftCardsNavController, userVM = userVM)
+                            RedeemGiftCardScreen(
+                                navController = giftCardsNavController,
+                                userVM = userVM
+                            )
                         }
                     }
                 }
@@ -83,16 +89,23 @@ fun HomeScreen(
                         startDestination = "cart_home"
                     ) {
                         composable("cart_home") {
-                            CartScreen(menuVM = menuVM, navController = cartNavController, isBottomNav = true)
+                            CartScreen(
+                                menuVM = menuVM,
+                                navController = cartNavController,
+                                isBottomNav = true
+                            )
                         }
                         composable("checkout") {
-                            CheckoutScreen(userVM = userVM, menuVM = menuVM, navController = cartNavController)
+                            CheckoutScreen(
+                                userVM = userVM,
+                                menuVM = menuVM,
+                                navController = cartNavController
+                            )
                         }
                     }
                 }
-                
+
                 Route.Activity.route -> {
-                    val activityNavController = rememberNavController()
                     NavHost(
                         navController = activityNavController,
                         startDestination = "activity_home"
@@ -102,14 +115,23 @@ fun HomeScreen(
                         }
                         composable(
                             "order_detail/{orderId}",
-                            arguments = listOf(navArgument("orderId") { type = androidx.navigation.NavType.IntType })
+                            arguments = listOf(navArgument("orderId") {
+                                type = androidx.navigation.NavType.IntType
+                            })
                         ) { backStackEntry ->
                             val orderId = backStackEntry.arguments?.getInt("orderId") ?: 0
-                            OrderDetailScreen(orderId = orderId, menuVM = menuVM, navController = activityNavController)
+                            OrderDetailScreen(
+                                orderId = orderId,
+                                menuVM = menuVM,
+                                navController = activityNavController,
+                                onReorder = {
+                                    selectedTab = Route.Cart.route
+                                }
+                            )
                         }
                     }
                 }
-                
+
                 Route.Account.route -> {
                     NavHost(
                         navController = accountNavController,
@@ -117,11 +139,13 @@ fun HomeScreen(
                     ) {
                         composable("account_home") {
                             AccountScreen(
-                                navController = accountNavController, 
-                                userVM = userVM, 
+                                navController = accountNavController,
+                                userVM = userVM,
                                 onLogout = {
                                     parentNavController.navigate("signin") {
-                                        popUpTo(parentNavController.graph.startDestinationId) { inclusive = true }
+                                        popUpTo(parentNavController.graph.startDestinationId) {
+                                            inclusive = true
+                                        }
                                     }
                                 }
                             )

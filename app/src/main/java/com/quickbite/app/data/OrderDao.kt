@@ -23,6 +23,12 @@ interface OrderDao {
     @Query("SELECT * FROM orders WHERE timestamp >= :since ORDER BY timestamp DESC")
     fun getOrdersSince(since: Long): Flow<List<Order>>
 
+    @Query("SELECT * FROM orders WHERE timestamp BETWEEN :startDate AND :endDate ORDER BY timestamp DESC")
+    fun getOrdersByDateRange(startDate: Long, endDate: Long): Flow<List<Order>>
+
     @Query("SELECT * FROM orders WHERE orderId = :id")
     fun getOrderById(id: Int): Flow<Order>
+
+    @Query("SELECT * FROM orders WHERE status = :status ORDER BY timestamp DESC")
+    fun getOrdersByStatus(status: String): Flow<List<Order>>
 }

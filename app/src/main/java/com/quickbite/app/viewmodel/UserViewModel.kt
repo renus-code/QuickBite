@@ -55,12 +55,17 @@ class UserViewModel(
             }
         }
     }
-    
+
     fun clearMessage() {
         _message.value = null
     }
 
-    suspend fun signup(email: String, password: String, displayName: String, phoneNumber: String): Boolean {
+    suspend fun signup(
+        email: String,
+        password: String,
+        displayName: String,
+        phoneNumber: String
+    ): Boolean {
         if (repository.getUserByEmail(email) == null) {
             val newUser = User(email, password, displayName, phoneNumber)
             repository.insertUser(newUser)
@@ -153,7 +158,7 @@ class UserViewModel(
                                 redeemedByUserId = currentUser.id
                             )
                             giftCardRepository.updateGiftCard(updatedGiftCard)
-                            
+
                             val newBalance = currentUser.balance + giftCard.amount
                             val updatedUser = currentUser.copy(balance = newBalance)
                             repository.updateUser(updatedUser)
@@ -165,7 +170,8 @@ class UserViewModel(
                             _message.value = "This gift card has already been redeemed."
                         }
                     } else {
-                        _message.value = "Failed: This card was sent to ${giftCard.recipientEmail}, not you."
+                        _message.value =
+                            "Failed: This card was sent to ${giftCard.recipientEmail}, not you."
                     }
                 } else {
                     _message.value = "Please log in to redeem."

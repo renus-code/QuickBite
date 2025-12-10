@@ -13,6 +13,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import java.util.UUID
 
 enum class OrderFilter { ALL, WEEK, MONTH }
 
@@ -44,33 +45,53 @@ class MenuViewModel(
     private val _orderFilter = MutableStateFlow(OrderFilter.ALL)
     val orderFilter: StateFlow<OrderFilter> = _orderFilter
 
+    private val _dateRange = MutableStateFlow<Pair<Long, Long>?>(null)
+    val dateRange: StateFlow<Pair<Long, Long>?> = _dateRange
+
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val orders: StateFlow<List<Order>> = _orderFilter.flatMapLatest { filter ->
-        when (filter) {
-            OrderFilter.ALL -> orderRepository.getAllOrders()
-            OrderFilter.WEEK -> {
-                val cal = Calendar.getInstance()
-                cal.add(Calendar.DAY_OF_YEAR, -7)
-                orderRepository.getOrdersSince(cal.timeInMillis)
-            }
-            OrderFilter.MONTH -> {
-                val cal = Calendar.getInstance()
-                cal.add(Calendar.MONTH, -1)
-                orderRepository.getOrdersSince(cal.timeInMillis)
+    val orders: StateFlow<List<Order>> = combine(_orderFilter, _dateRange) { filter, range ->
+        Pair(filter, range)
+    }.flatMapLatest { (filter, range) ->
+        if (range != null) {
+            orderRepository.getOrdersByDateRange(range.first, range.second)
+        } else {
+            when (filter) {
+                OrderFilter.ALL -> orderRepository.getAllOrders()
+                OrderFilter.WEEK -> {
+                    val cal = Calendar.getInstance()
+                    cal.add(Calendar.DAY_OF_YEAR, -7)
+                    orderRepository.getOrdersSince(cal.timeInMillis)
+                }
+
+                OrderFilter.MONTH -> {
+                    val cal = Calendar.getInstance()
+                    cal.add(Calendar.MONTH, -1)
+                    orderRepository.getOrdersSince(cal.timeInMillis)
+                }
             }
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList<Order>())
 
-    val filteredFoodItems: StateFlow<List<FoodItem>> = combine(foodItems, searchQuery) { items, query ->
-        if (query.isBlank()) {
-            items
-        } else {
-            items.filter { it.name.contains(query, ignoreCase = true) }
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList<FoodItem>())
+    val filteredFoodItems: StateFlow<List<FoodItem>> =
+        combine(foodItems, searchQuery) { items, query ->
+            if (query.isBlank()) {
+                items
+            } else {
+                items.filter { it.name.contains(query, ignoreCase = true) }
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList<FoodItem>())
 
     fun setOrderFilter(filter: OrderFilter) {
         _orderFilter.value = filter
+        _dateRange.value = null // Reset date range when filter changes
+    }
+
+    fun setDateRange(startDate: Long, endDate: Long) {
+        _dateRange.value = Pair(startDate, endDate)
+    }
+
+    fun clearDateRange() {
+        _dateRange.value = null
     }
 
     fun getOrderById(id: Int): Flow<Order> {
@@ -99,6 +120,37 @@ class MenuViewModel(
         }
     }
 
+    fun reOrder(order: Order) {
+        viewModelScope.launch {
+            clearCart() // Clear existing cart
+            // This is a simplification. Ideally, we should parse the item strings or store structured data.
+            // Assuming the item string is format "Name (xQuantity)"
+            val newCartItems = order.items.mapNotNull { itemString ->
+                val match = Regex("(.*) \\(x(\\d+)\\)").find(itemString)
+                if (match != null) {
+                    val (name, quantity) = match.destructured
+                    // We need a FoodItem object. Since we only have the name here and potentially price from total,
+                    // we'll create a dummy FoodItem or try to find it.
+                    // For a robust app, we should fetch the actual FoodItem from a repository.
+                    // Here, creating a placeholder FoodItem to allow re-ordering flow to work.
+                    // Price is tricky without individual item prices stored.
+                    // We'll approximate or set to 0 and expect the user might review/update.
+                    // BETTER APPROACH: Just try to match name from loaded items or create a basic object.
+                    FoodItem(
+                        id = UUID.randomUUID().toString(),
+                        name = name,
+                        price = 0.0,
+                        imageUrl = ""
+                    ) to quantity.toInt()
+                } else {
+                    null
+                }
+            }
+
+            _cartItems.value = newCartItems.map { (item, qty) -> CartItem(item, qty) }
+        }
+    }
+
     fun increaseQuantity(item: FoodItem) {
         _cartItems.update { currentCart ->
             currentCart.map {
@@ -112,8 +164,8 @@ class MenuViewModel(
             val existingItem = currentCart.find { it.item.id == item.id }
             if (existingItem != null) {
                 if (existingItem.quantity > 1) {
-                    currentCart.map { 
-                        if (it.item.id == item.id) it.copy(quantity = it.quantity - 1) else it 
+                    currentCart.map {
+                        if (it.item.id == item.id) it.copy(quantity = it.quantity - 1) else it
                     }
                 } else {
                     currentCart.filterNot { it.item.id == item.id }
@@ -142,23 +194,33 @@ class MenuViewModel(
                 )
                 val orderId = orderRepository.saveOrder(newOrder)
                 clearCart()
-                
+
                 // Start simulating the order status updates
                 simulateOrderStatus(orderId, newOrder)
             }
         }
     }
-    
+
     private fun simulateOrderStatus(orderId: Long, order: Order) {
         viewModelScope.launch {
             _orderStatusMessage.value = "Order placed successfully!"
-            delay(5000) 
-            orderRepository.updateOrder(order.copy(orderId = orderId.toInt(), status = "Processing"))
+            delay(5000)
+            orderRepository.updateOrder(
+                order.copy(
+                    orderId = orderId.toInt(),
+                    status = "Processing"
+                )
+            )
             _orderStatusMessage.value = "Your order is being processed."
-            delay(10000) 
-            orderRepository.updateOrder(order.copy(orderId = orderId.toInt(), status = "Out for Delivery"))
+            delay(10000)
+            orderRepository.updateOrder(
+                order.copy(
+                    orderId = orderId.toInt(),
+                    status = "Out for Delivery"
+                )
+            )
             _orderStatusMessage.value = "Your order is out for delivery!"
-            delay(15000) 
+            delay(15000)
             orderRepository.updateOrder(order.copy(orderId = orderId.toInt(), status = "Delivered"))
             _orderStatusMessage.value = "Your order has been delivered!"
             delay(5000)

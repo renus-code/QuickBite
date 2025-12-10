@@ -21,7 +21,15 @@ class OrderRepository(private val orderDao: OrderDao) {
         return orderDao.getOrdersSince(timestamp)
     }
 
+    fun getOrdersByDateRange(startDate: Long, endDate: Long): Flow<List<Order>> {
+        return orderDao.getOrdersByDateRange(startDate, endDate)
+    }
+
     fun getOrderById(id: Int): Flow<Order> {
         return orderDao.getOrderById(id)
+    }
+
+    fun getOrdersByStatus(status: String): Flow<List<Order>> {
+        return orderDao.getOrdersByStatus(status)
     }
 }
