@@ -23,6 +23,11 @@ import java.text.SimpleDateFormat
 
 @Composable
 fun ActivityScreen(menuVM: MenuViewModel, navController: NavHostController) {
+    // Refresh user context when entering screen
+    LaunchedEffect(Unit) {
+        menuVM.refreshUser()
+    }
+
     val orders by menuVM.orders.collectAsState()
     val filter by menuVM.orderFilter.collectAsState()
     val dateRange by menuVM.dateRange.collectAsState()

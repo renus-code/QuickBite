@@ -47,26 +47,39 @@ class MenuViewModel(
 
     private val _dateRange = MutableStateFlow<Pair<Long, Long>?>(null)
     val dateRange: StateFlow<Pair<Long, Long>?> = _dateRange
+    
+    // We observe the logged in user from settingsManager
+    private val _currentUserEmail = MutableStateFlow(settingsManager.getLoggedInUser())
+    
+    // Call this when user might have changed
+    fun refreshUser() {
+        val user = settingsManager.getLoggedInUser()
+        if (_currentUserEmail.value != user) {
+            _currentUserEmail.value = user
+        }
+    }
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val orders: StateFlow<List<Order>> = combine(_orderFilter, _dateRange) { filter, range ->
-        Pair(filter, range)
-    }.flatMapLatest { (filter, range) ->
-        if (range != null) {
-            orderRepository.getOrdersByDateRange(range.first, range.second)
+    val orders: StateFlow<List<Order>> = combine(_orderFilter, _dateRange, _currentUserEmail) { filter, range, email ->
+        Triple(filter, range, email)
+    }.flatMapLatest { (filter, range, email) ->
+        if (email == null) {
+            flowOf(emptyList())
+        } else if (range != null) {
+            orderRepository.getOrdersByDateRangeForUser(email, range.first, range.second)
         } else {
             when (filter) {
-                OrderFilter.ALL -> orderRepository.getAllOrders()
+                OrderFilter.ALL -> orderRepository.getOrdersForUser(email)
                 OrderFilter.WEEK -> {
                     val cal = Calendar.getInstance()
                     cal.add(Calendar.DAY_OF_YEAR, -7)
-                    orderRepository.getOrdersSince(cal.timeInMillis)
+                    orderRepository.getOrdersSinceForUser(email, cal.timeInMillis)
                 }
 
                 OrderFilter.MONTH -> {
                     val cal = Calendar.getInstance()
                     cal.add(Calendar.MONTH, -1)
-                    orderRepository.getOrdersSince(cal.timeInMillis)
+                    orderRepository.getOrdersSinceForUser(email, cal.timeInMillis)
                 }
             }
         }
@@ -122,20 +135,13 @@ class MenuViewModel(
 
     fun reOrder(order: Order) {
         viewModelScope.launch {
-            clearCart() // Clear existing cart
-            // This is a simplification. Ideally, we should parse the item strings or store structured data.
-            // Assuming the item string is format "Name (xQuantity)"
+            clearCart() 
+            // Parsing item strings to rebuild cart
             val newCartItems = order.items.mapNotNull { itemString ->
                 val match = Regex("(.*) \\(x(\\d+)\\)").find(itemString)
                 if (match != null) {
                     val (name, quantity) = match.destructured
-                    // We need a FoodItem object. Since we only have the name here and potentially price from total,
-                    // we'll create a dummy FoodItem or try to find it.
-                    // For a robust app, we should fetch the actual FoodItem from a repository.
-                    // Here, creating a placeholder FoodItem to allow re-ordering flow to work.
-                    // Price is tricky without individual item prices stored.
-                    // We'll approximate or set to 0 and expect the user might review/update.
-                    // BETTER APPROACH: Just try to match name from loaded items or create a basic object.
+                    // Ideally fetch actual FoodItem. Here creating a placeholder.
                     FoodItem(
                         id = UUID.randomUUID().toString(),
                         name = name,
@@ -181,10 +187,18 @@ class MenuViewModel(
     }
 
     fun placeOrder(address: Address, paymentMethod: String) {
+        val email = settingsManager.getLoggedInUser()
+        refreshUser() // Ensure flow is in sync
+        
+        if (email == null) {
+            _error.value = "User not logged in"
+            return
+        }
         viewModelScope.launch {
             val currentCart = _cartItems.value
             if (currentCart.isNotEmpty()) {
                 val newOrder = Order(
+                    userEmail = email,
                     items = currentCart.map { "${it.item.name} (x${it.quantity})" },
                     totalPrice = currentCart.sumOf { it.item.price * it.quantity },
                     timestamp = System.currentTimeMillis(),

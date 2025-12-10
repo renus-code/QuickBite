@@ -13,23 +13,31 @@ class OrderRepository(private val orderDao: OrderDao) {
         orderDao.updateOrder(order)
     }
 
+    // Deprecated: getAllOrders now requires user email to filter correctly in multi-user environment
     fun getAllOrders(): Flow<List<Order>> {
-        return orderDao.getAllOrders()
+        // Fallback to empty list or throw exception if this shouldn't be called without user context
+        // Ideally, callers should migrate to getOrdersForUser
+        // For now, returning empty flow to avoid breakage but indicating misuse
+         return kotlinx.coroutines.flow.flowOf(emptyList())
+    }
+    
+    fun getOrdersForUser(email: String): Flow<List<Order>> {
+        return orderDao.getOrdersForUser(email)
     }
 
-    fun getOrdersSince(timestamp: Long): Flow<List<Order>> {
-        return orderDao.getOrdersSince(timestamp)
+    fun getOrdersSinceForUser(email: String, timestamp: Long): Flow<List<Order>> {
+        return orderDao.getOrdersSinceForUser(email, timestamp)
     }
 
-    fun getOrdersByDateRange(startDate: Long, endDate: Long): Flow<List<Order>> {
-        return orderDao.getOrdersByDateRange(startDate, endDate)
+    fun getOrdersByDateRangeForUser(email: String, startDate: Long, endDate: Long): Flow<List<Order>> {
+        return orderDao.getOrdersByDateRangeForUser(email, startDate, endDate)
     }
 
     fun getOrderById(id: Int): Flow<Order> {
         return orderDao.getOrderById(id)
     }
 
-    fun getOrdersByStatus(status: String): Flow<List<Order>> {
-        return orderDao.getOrdersByStatus(status)
+    fun getOrdersByStatusForUser(email: String, status: String): Flow<List<Order>> {
+        return orderDao.getOrdersByStatusForUser(email, status)
     }
 }

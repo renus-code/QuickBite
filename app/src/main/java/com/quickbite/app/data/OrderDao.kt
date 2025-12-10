@@ -17,18 +17,18 @@ interface OrderDao {
     @Update
     suspend fun updateOrder(order: Order)
 
-    @Query("SELECT * FROM orders ORDER BY timestamp DESC")
-    fun getAllOrders(): Flow<List<Order>>
+    @Query("SELECT * FROM orders WHERE userEmail = :email ORDER BY timestamp DESC")
+    fun getOrdersForUser(email: String): Flow<List<Order>>
 
-    @Query("SELECT * FROM orders WHERE timestamp >= :since ORDER BY timestamp DESC")
-    fun getOrdersSince(since: Long): Flow<List<Order>>
+    @Query("SELECT * FROM orders WHERE userEmail = :email AND timestamp >= :since ORDER BY timestamp DESC")
+    fun getOrdersSinceForUser(email: String, since: Long): Flow<List<Order>>
 
-    @Query("SELECT * FROM orders WHERE timestamp BETWEEN :startDate AND :endDate ORDER BY timestamp DESC")
-    fun getOrdersByDateRange(startDate: Long, endDate: Long): Flow<List<Order>>
+    @Query("SELECT * FROM orders WHERE userEmail = :email AND timestamp BETWEEN :startDate AND :endDate ORDER BY timestamp DESC")
+    fun getOrdersByDateRangeForUser(email: String, startDate: Long, endDate: Long): Flow<List<Order>>
 
     @Query("SELECT * FROM orders WHERE orderId = :id")
     fun getOrderById(id: Int): Flow<Order>
 
-    @Query("SELECT * FROM orders WHERE status = :status ORDER BY timestamp DESC")
-    fun getOrdersByStatus(status: String): Flow<List<Order>>
+    @Query("SELECT * FROM orders WHERE userEmail = :email AND status = :status ORDER BY timestamp DESC")
+    fun getOrdersByStatusForUser(email: String, status: String): Flow<List<Order>>
 }

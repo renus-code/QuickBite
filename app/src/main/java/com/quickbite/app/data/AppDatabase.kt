@@ -8,7 +8,7 @@ import com.quickbite.app.model.Order
 import com.quickbite.app.model.User
 import com.quickbite.app.model.GiftCard
 
-@Database(entities = [User::class, Order::class, GiftCard::class], version = 3, exportSchema = false) // Bumped version to 3
+@Database(entities = [User::class, Order::class, GiftCard::class], version = 4, exportSchema = false) // Bumped version to 4
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun userDao(): UserDao

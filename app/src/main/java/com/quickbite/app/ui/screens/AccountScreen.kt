@@ -51,12 +51,14 @@ fun AccountScreen(
     var editCity by remember { mutableStateOf("") }
     var editProvince by remember { mutableStateOf("") }
     var editPostalCode by remember { mutableStateOf("") }
-    var editingType by remember { mutableStateOf("Profile") }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri: Uri? ->
-            uri?.let { userVM.updateUserProfile(avatarId = it.toString()) }
+            uri?.let { 
+                userVM.updateUserProfile(avatarId = it.toString()) 
+                showAvatarDialog = false
+            }
         }
     )
 
@@ -68,7 +70,47 @@ fun AccountScreen(
     }
 
     if (showAvatarDialog) {
-        // ... (Avatar Dialog remains the same)
+        AlertDialog(
+            onDismissRequest = { showAvatarDialog = false },
+            title = { Text("Choose Avatar") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    TextButton(onClick = { photoPickerLauncher.launch("image/*") }) {
+                        Text("Pick from Gallery")
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Or select a default avatar:")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        listOf("avatar_1", "avatar_2", "avatar_3", "avatar_4").forEach { avatar ->
+                            Box(
+                                modifier = Modifier
+                                    .size(50.dp)
+                                    .background(
+                                        when (avatar) {
+                                            "avatar_1" -> Color(0xFF2196F3)
+                                            "avatar_2" -> Color(0xFFE91E63)
+                                            "avatar_3" -> Color(0xFF4CAF50)
+                                            "avatar_4" -> Color(0xFFFF9800)
+                                            else -> Color.Gray
+                                        },
+                                        CircleShape
+                                    )
+                                    .clickable {
+                                        userVM.updateUserProfile(avatarId = avatar)
+                                        showAvatarDialog = false
+                                    }
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { showAvatarDialog = false }) { Text("Cancel") } }
+        )
     }
 
     if (showEditDialog) {
